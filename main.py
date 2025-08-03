@@ -22,7 +22,7 @@ import queue
 import atexit
 import os
 import json
-from google import genai
+import google.generativeai as genai
 from dotenv import load_dotenv
 from database import db_service
 from daily_vn30_update import daily_vn30_update
@@ -44,8 +44,8 @@ app.add_middleware(
 
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_API_KEY)
-model = "gemini-2.5-pro"
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-pro")
 
 
 # Global driver pool
@@ -324,7 +324,7 @@ def analyze_with_gemini(all_posts_content: str) -> List[dict]:
         """
         
         print("Sending content to Gemini for analysis...")
-        response = client.models.generate_content(model=model, contents=prompt)
+        response = model.generate_content(prompt)
         
         if response and response.text:
             print("Received response from Gemini")
@@ -1027,7 +1027,7 @@ def analyze_individual_post_with_gemini(content: str) -> Dict:
         """
         
         print("Sending individual post to Gemini for analysis...")
-        response = client.models.generate_content(model=model, contents=prompt)
+        response = model.generate_content(prompt)
         
         if response and response.text:
             print("Received individual post analysis from Gemini")
