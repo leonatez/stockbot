@@ -1,0 +1,20 @@
+====ABS=====
+
+document.querySelector("input[name='url']").value = "https://www.abs.vn/phan-tich-dau-tu/trung-tam-phan-tich/bao-cao-cong-ty";
+document.querySelector("input[name='sourceName']").value = "ABS";
+document.querySelector("select[name='sourceType']").value = "Company"; // Change if needed
+
+document.querySelector("input[name='xpath']").value = "//a[@class='elementor-post__read-more']";
+document.querySelector("input[name='paginationRule']").value = "/page/<page>/";
+document.querySelector("input[name='contentXpath']").value = "/html/body/div[1]/section[2]/div/div/div";
+document.querySelector("input[name='contentDateXpath']").value = "//span[@class='elementor-post-date']";
+
+====ACBS=====
+document.querySelector("input[name='url']").value = "https://acbs.com.vn/trung-tam-phan-tich/bao-cao-doanh-nghiep";
+document.querySelector("input[name='sourceName']").value = "ACBS";
+document.querySelector("select[name='sourceType']").value = "Company";
+
+document.querySelector("input[name='xpath']").value = "//div[@class='group space-y-6 flex flex-col']/a";
+document.querySelector("input[name='paginationRule']").value = "/page/<page>/";
+document.querySelector("input[name='contentXpath']").value = "/html/body/main/section[2]/div/div/article/div[2]";
+document.querySelector("input[name='contentDateXpath']").value = "//div[@class='flex items-center gap-3 text-sm text-content']/span[@class='whitespace-nowrap'][2]";

@@ -1,0 +1,1203 @@
+<html>
+
+<head>
+    <title>Multi-Source Crawler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body class="bg-[#dff5f1] min-h-screen py-8">
+    <div class="max-w-7xl mx-auto px-4">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Multi-Source Stock Analysis Crawler</h1>
+            <p class="text-gray-600">Add multiple sources and analyze stock mentions across all of them</p>
+        </div>
+
+        <!-- Recent Stocks Dashboard -->
+        <div id="stocksDashboard" class="bg-white rounded-xl shadow-lg p-8 mb-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">
+                    <i class="fas fa-chart-line mr-2 text-[#23c49e]"></i>Recent Stock Activity
+                </h2>
+                <div class="flex items-center space-x-4">
+                    <label for="dashboardDays" class="text-sm font-medium text-gray-700">Last:</label>
+                    <select id="dashboardDays" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#23c49e]">
+                        <option value="1">1 day</option>
+                        <option value="3" selected>3 days</option>
+                        <option value="7">7 days</option>
+                        <option value="14">14 days</option>
+                    </select>
+                    <button id="refreshStocksBtn" class="bg-[#23c49e] text-white px-3 py-2 rounded-md hover:bg-[#1fa385] transition text-sm">
+                        <i class="fas fa-sync-alt mr-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Filters Section -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm font-medium text-gray-700">
+                            <i class="fas fa-search mr-1"></i>Search:
+                        </label>
+                        <input 
+                            id="stockSearch" 
+                            type="text" 
+                            placeholder="Enter stock symbol..." 
+                            class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#23c49e] w-40"
+                        >
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm font-medium text-gray-700">
+                            <i class="fas fa-smile mr-1"></i>Sentiment:
+                        </label>
+                        <select id="sentimentFilter" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#23c49e]">
+                            <option value="">All</option>
+                            <option value="positive">Positive</option>
+                            <option value="neutral">Neutral</option>
+                            <option value="negative">Negative</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm font-medium text-gray-700">
+                            <i class="fas fa-star mr-1"></i>VN30:
+                        </label>
+                        <select id="vn30Filter" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#23c49e]">
+                            <option value="">All</option>
+                            <option value="true">VN30 Only</option>
+                            <option value="false">Non-VN30</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm font-medium text-gray-700">
+                            <i class="fas fa-sort mr-1"></i>Sort by:
+                        </label>
+                        <select id="sortBy" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#23c49e]">
+                            <option value="posts_count">Post Count</option>
+                            <option value="symbol">Symbol</option>
+                            <option value="last_updated">Date</option>
+                            <option value="sentiment">Sentiment</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <select id="sortOrder" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#23c49e]">
+                            <option value="desc">Descending</option>
+                            <option value="asc">Ascending</option>
+                        </select>
+                    </div>
+                    
+                    <button id="clearFilters" class="bg-gray-500 text-white px-3 py-2 rounded-md hover:bg-gray-600 transition text-sm">
+                        <i class="fas fa-times mr-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stocks Content -->
+            <div id="stocksContent">
+                <div id="stocksLoading" class="text-center py-8 text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>Loading recent stocks...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sources Container -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">
+                    <i class="fas fa-globe mr-2 text-[#23c49e]"></i>Data Sources
+                </h2>
+                <button id="addNewPageBtn" 
+                        class="bg-[#23c49e] text-white px-4 py-2 rounded-md hover:bg-[#1fa385] transition">
+                    <i class="fas fa-plus mr-2"></i>Add New Page
+                </button>
+            </div>
+
+            <!-- Sources List -->
+            <div id="sourcesList" class="space-y-4 mb-6">
+                <div id="emptyState" class="text-center py-8 text-gray-500">
+                    <i class="fas fa-plus-circle text-4xl mb-4"></i>   
+                    <p>No sources added yet. Click "Add New Page" to get started.</p>
+                </div>
+            </div>
+
+            <!-- New Source Form (Hidden by default) -->
+            <div id="newSourceForm" class="hidden border-t pt-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">
+                    <i class="fas fa-plus-circle mr-2 text-[#23c49e]"></i>Add New Source
+                </h3>
+                <form id="sourceForm" class="space-y-6">
+                    <div> 
+                        <label class="block text-gray-600 font-semibold mb-1">URL</label> 
+                        <input type="text" name="url"
+                            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#23c49e]"
+                            placeholder="Enter URL" required /> 
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-600 font-semibold mb-1">Source Name</label>
+                            <input type="text" name="sourceName"
+                                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#23c49e]"
+                                placeholder="Enter Source Name" required />
+                        </div>
+                        <div>
+                            <label class="block text-gray-600 font-semibold mb-1">Source Type</label>
+                            <select name="sourceType"
+                                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#23c49e]">
+                                <option>Industry</option>
+                                <option>Company</option>
+                                <option>Macro Economy</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-600 font-semibold mb-1">XPath</label>
+                            <input type="text" name="xpath"
+                                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#23c49e]"
+                                placeholder="Enter XPath" />
+                        </div>
+                        <div>
+                            <label class="block text-gray-600 font-semibold mb-1">Pagination Rule</label>
+                            <input type="text" name="paginationRule"
+                                class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#23c49e]"
+                                placeholder="Enter Pagination Rule" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-600 font-semibold mb-1">Content XPath</label>
+                        <input type="text" name="contentXpath"
+                            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#23c49e]"
+                            placeholder="Enter Content XPath" />
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 font-semibold mb-1">Content Date XPath</label>
+                        <input type="text" name="contentDateXpath"
+                            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#23c49e]"
+                            placeholder="Enter Content Date XPath" />
+                    </div>
+
+                    <div class="flex justify-end space-x-3 pt-4">
+                        <button type="button" id="cancelBtn"
+                                class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="bg-[#23c49e] text-white px-6 py-2 rounded-md hover:bg-[#1fa385] transition">
+                            Save Source
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Crawl Button (only show when sources exist) -->
+            <div id="crawlSection" class="hidden border-t pt-6">
+                <div class="flex flex-col items-center space-y-4">
+                    <!-- Crawl Days Configuration -->
+                    <div class="flex items-center space-x-4">
+                        <label for="crawlDays" class="text-sm font-medium text-gray-700">
+                            <i class="fas fa-calendar-alt mr-2 text-[#23c49e]"></i>Crawl posts from last:
+                        </label>
+                        <select id="crawlDays" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#23c49e]">
+                            <option value="1">1 day</option>
+                            <option value="3" selected>3 days</option>
+                            <option value="7">7 days</option>
+                            <option value="14">14 days</option>
+                            <option value="30">30 days</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Crawl Button -->
+                    <div>
+                        <button id="crawlAllBtn"
+                                class="bg-blue-600 text-white px-8 py-3 rounded-md hover:bg-blue-700 transition text-lg font-semibold">
+                            <span id="crawlText">
+                                <i class="fas fa-search mr-2"></i>Analyze All Sources
+                            </span>
+                            <i id="crawlLoadingIcon" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsContainer" class="hidden">
+            <!-- Metadata Section -->
+            <div id="metadataSection" class="mb-6 p-6 bg-white rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-blue-800 mb-4">
+                    <i class="fas fa-info-circle mr-2"></i>Analysis Summary
+                </h2>
+                <div id="metadataContent" class="text-blue-700"></div>
+            </div>
+
+            <!-- Stock Analysis Section -->
+            <div id="stockAnalysisSection" class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                    <i class="fas fa-chart-line mr-2 text-[#23c49e]"></i>Stock Analysis Results
+                </h2>
+                <div id="stockAnalysisContent" class="space-y-6"></div>
+            </div>
+
+            <!-- Individual Posts Section -->
+            <div id="postsSection" class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-newspaper mr-2 text-[#23c49e]"></i>All Analyzed Posts
+                </h2>
+                <div id="postsContent" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <!-- Error Section -->
+        <div id="errorBox" class="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl hidden">
+            <h2 class="text-lg font-semibold text-red-700 mb-2">
+                <i class="fas fa-exclamation-triangle mr-2"></i>Error
+            </h2>
+            <p id="errorText" class="text-red-600"></p>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let sources = [];
+        let currentEditingIndex = -1;
+
+        // DOM elements
+        const addNewPageBtn = document.getElementById("addNewPageBtn");
+        const newSourceForm = document.getElementById("newSourceForm");
+        const sourceForm = document.getElementById("sourceForm");
+        const cancelBtn = document.getElementById("cancelBtn");
+        const sourcesList = document.getElementById("sourcesList");
+        const emptyState = document.getElementById("emptyState");
+        const crawlSection = document.getElementById("crawlSection");
+        const crawlAllBtn = document.getElementById("crawlAllBtn");
+        const crawlText = document.getElementById("crawlText");
+        const crawlLoadingIcon = document.getElementById("crawlLoadingIcon");
+        const resultsContainer = document.getElementById("resultsContainer");
+        const errorBox = document.getElementById("errorBox");
+        const errorText = document.getElementById("errorText");
+        
+        // New dashboard elements
+        const crawlDays = document.getElementById("crawlDays");
+        const dashboardDays = document.getElementById("dashboardDays");
+        const refreshStocksBtn = document.getElementById("refreshStocksBtn");
+        const stocksContent = document.getElementById("stocksContent");
+        const stocksLoading = document.getElementById("stocksLoading");
+
+        // Event listeners
+        addNewPageBtn.addEventListener("click", showNewSourceForm);
+        cancelBtn.addEventListener("click", hideNewSourceForm);
+        sourceForm.addEventListener("submit", saveSource);
+        crawlAllBtn.addEventListener("click", crawlAllSources);
+        refreshStocksBtn.addEventListener("click", loadRecentStocks);
+        dashboardDays.addEventListener("change", loadRecentStocks);
+
+        // Load sources from database on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSourcesFromDatabase();
+            loadRecentStocks();
+        });
+
+        async function loadSourcesFromDatabase() {
+            try {
+                console.log("Loading sources from database...");
+                const response = await fetch("http://127.0.0.1:8000/sources", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log("Loaded sources:", result.sources);
+                
+                // Convert database sources to frontend format
+                sources = result.sources.map(dbSource => ({
+                    url: dbSource.url,
+                    sourceName: dbSource.name,
+                    sourceType: "Company", // Default, could be enhanced later
+                    xpath: dbSource.xpath_title || "",
+                    pagination: "", // Not stored in current schema
+                    contentXpath: dbSource.xpath_content || "",
+                    contentDateXpath: dbSource.xpath_date || "",
+                    status: dbSource.status || "active",
+                    id: dbSource.id
+                }));
+                
+                updateSourcesList();
+                console.log(`✓ Loaded ${sources.length} sources from database`);
+                
+            } catch (error) {
+                console.error("Error loading sources from database:", error);
+                // Don't show error to user, just start with empty list
+            }
+        }
+
+        async function loadRecentStocks() {
+            try {
+                const days = dashboardDays.value;
+                console.log(`Loading recent stocks from last ${days} days...`);
+                
+                // Show loading state
+                stocksLoading.classList.remove("hidden");
+                stocksContent.innerHTML = `
+                    <div id="stocksLoading" class="text-center py-8 text-gray-500">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Loading recent stocks...</p>
+                    </div>
+                `;
+                
+                const response = await fetch(`http://127.0.0.1:8000/recent-stocks?days=${days}`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log("Loaded recent stocks:", result);
+                
+                displayRecentStocks(result.stocks, days);
+                
+            } catch (error) {
+                console.error("Error loading recent stocks:", error);
+                stocksContent.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                        <p>No recent stock data available</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayRecentStocks(stocks, days) {
+            if (!stocks || stocks.length === 0) {
+                stocksContent.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-chart-line text-4xl mb-4"></i>
+                        <p>No stocks found in the last ${days} days</p>
+                        <p class="text-sm mt-2">Try crawling some sources to populate the database</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const stocksHtml = stocks.map(stock => {
+                const sentimentColor = getSentimentColor(stock.sentiment);
+                
+                // Build posts list HTML
+                const postsHtml = (stock.posts || []).map(post => `
+                    <div class="bg-white border border-gray-100 rounded p-3 mb-2">
+                        <div class="flex items-start justify-between mb-2">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <span class="text-xs font-medium text-blue-600">${post.source_name}</span>
+                                    <span class="px-2 py-1 rounded text-xs ${getSentimentColor(post.sentiment)}">
+                                        ${post.sentiment}
+                                    </span>
+                                    <span class="text-xs text-gray-500">${formatDate(post.created_date)}</span>
+                                </div>
+                                <a href="${post.url}" target="_blank" class="text-sm text-gray-700 hover:text-[#23c49e] line-clamp-2">
+                                    ${post.summary}
+                                </a>
+                            </div>
+                            <a href="${post.url}" target="_blank" class="ml-2 text-[#23c49e] hover:text-[#1fa385]">
+                                <i class="fas fa-external-link-alt text-xs"></i>
+                            </a>
+                        </div>
+                        ${post.stock_mention_summary ? `
+                            <div class="text-xs text-gray-600 italic mt-1">
+                                About ${stock.symbol}: ${post.stock_mention_summary}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+                
+                return `
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-2">
+                                <h3 class="font-bold text-lg text-gray-800">
+                                    <i class="fas fa-dollar-sign mr-2 text-[#23c49e]"></i>${stock.symbol}
+                                </h3>
+                                ${stock.isvn30 ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full border border-yellow-300"><i class="fas fa-star mr-1"></i>VN30</span>' : ''}
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="px-3 py-1 rounded-full text-sm font-medium ${sentimentColor}">
+                                    ${stock.sentiment}
+                                </span>
+                                <span class="text-sm text-gray-500">
+                                    ${stock.posts_count} posts
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">
+                            <strong>${stock.name}</strong> • ${stock.exchange}
+                        </p>
+                        
+                        <!-- Latest Daily Sentiment Summary -->
+                        <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                            <h4 class="text-sm font-semibold text-blue-800 mb-1">
+                                <i class="fas fa-chart-line mr-1"></i>Latest Analysis:
+                            </h4>
+                            <p class="text-sm text-blue-700">
+                                ${stock.summary || 'No analysis summary available'}
+                            </p>
+                        </div>
+                        
+                        <!-- Posts mentioning this stock -->
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-newspaper mr-1"></i>Recent Posts (${stock.posts_count}):
+                            </h4>
+                            <div class="max-h-64 overflow-y-auto">
+                                ${postsHtml || '<p class="text-sm text-gray-500 italic">No posts available</p>'}
+                            </div>
+                        </div>
+                        
+                        <!-- Stock Price Charts -->
+                        <div class="mt-4">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-chart-area mr-1"></i>Price Trends:
+                            </h4>
+                            <div class="bg-white rounded border p-3">
+                                <div class="flex justify-center space-x-2 mb-3">
+                                    <button class="chart-period-btn text-xs px-2 py-1 rounded bg-[#23c49e] text-white" data-period="7d" data-symbol="${stock.symbol}">7D</button>
+                                    <button class="chart-period-btn text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300" data-period="1m" data-symbol="${stock.symbol}">1M</button>
+                                    <button class="chart-period-btn text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300" data-period="3m" data-symbol="${stock.symbol}">3M</button>
+                                </div>
+                                <div style="height: 200px; position: relative;">
+                                    <canvas id="chart-${stock.symbol}" class="w-full h-full"></canvas>
+                                </div>
+                                <div id="chart-loading-${stock.symbol}" class="text-center py-8 text-gray-500 hidden">
+                                    <i class="fas fa-spinner fa-spin text-sm mb-1"></i>
+                                    <p class="text-xs">Loading chart...</p>
+                                </div>
+                                <div id="chart-error-${stock.symbol}" class="text-center py-4 text-red-500 text-xs hidden">
+                                    <i class="fas fa-exclamation-triangle mb-1"></i>
+                                    <p>No price data available</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-xs text-gray-500 mt-3 pt-2 border-t">
+                            Last updated: ${formatDate(stock.last_updated)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            stocksContent.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${stocksHtml}
+                </div>
+                <div class="text-center mt-4 text-sm text-gray-500">
+                    Showing ${stocks.length} stocks from the last ${days} days
+                </div>
+            `;
+        }
+
+        function showNewSourceForm() {
+            newSourceForm.classList.remove("hidden");
+            addNewPageBtn.style.display = "none";
+            sourceForm.reset();
+            currentEditingIndex = -1;
+        }
+
+        function hideNewSourceForm() {
+            newSourceForm.classList.add("hidden");
+            addNewPageBtn.style.display = "block";
+            sourceForm.reset();
+            currentEditingIndex = -1;
+        }
+
+        async function saveSource(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(sourceForm);
+            const sourceData = {
+                url: formData.get("url"),
+                sourceName: formData.get("sourceName"),
+                sourceType: formData.get("sourceType"),
+                xpath: formData.get("xpath"),
+                pagination: formData.get("paginationRule"),
+                contentXpath: formData.get("contentXpath"),
+                contentDateXpath: formData.get("contentDateXpath"),
+            };
+
+            if (currentEditingIndex >= 0) {
+                // Editing existing source (update local array for now)
+                sources[currentEditingIndex] = {...sources[currentEditingIndex], ...sourceData};
+                updateSourcesList();
+                hideNewSourceForm();
+            } else {
+                // Adding new source - save to database
+                try {
+                    const response = await fetch("http://127.0.0.1:8000/sources", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(sourceData),
+                        mode: 'cors'
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    console.log("Source saved:", result);
+                    
+                    // Reload sources from database to get the latest data
+                    await loadSourcesFromDatabase();
+                    
+                    hideNewSourceForm();
+                    
+                } catch (error) {
+                    console.error("Error saving source:", error);
+                    alert(`Failed to save source: ${error.message}`);
+                }
+            }
+        }
+
+        function updateSourcesList() {
+            if (sources.length === 0) {
+                emptyState.classList.remove("hidden");
+                crawlSection.classList.add("hidden");
+                return;
+            }
+
+            emptyState.classList.add("hidden");
+            crawlSection.classList.remove("hidden");
+
+            sourcesList.innerHTML = sources.map((source, index) => {
+                const isActive = source.status === 'active';
+                const statusColor = isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                const statusText = isActive ? 'Active' : 'Inactive';
+                
+                return `
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-4 mb-2">
+                                <h3 class="font-semibold text-gray-800">
+                                    <i class="fas fa-globe mr-2 text-[#23c49e]"></i>${source.sourceName}
+                                </h3>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                                    ${source.sourceType || 'Company'}
+                                </span>
+                                <span class="px-2 py-1 ${statusColor} rounded text-xs font-medium">
+                                    ${statusText}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600 break-all">
+                                <i class="fas fa-link mr-1"></i>${source.url}
+                            </p>
+                        </div>
+                        <div class="flex items-center space-x-3 ml-4">
+                            <!-- Toggle Switch -->
+                            <div class="flex items-center">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" ${isActive ? 'checked' : ''} 
+                                           onchange="toggleSourceStatus(${index})"
+                                           class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#23c49e]"></div>
+                                </label>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex space-x-2">
+                                <button onclick="editSource(${index})" 
+                                        class="text-blue-600 hover:text-blue-800 px-2 py-1 rounded">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteSource(${index})" 
+                                        class="text-red-600 hover:text-red-800 px-2 py-1 rounded">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        async function toggleSourceStatus(index) {
+            const source = sources[index];
+            const newStatus = source.status === 'active' ? 'inactive' : 'active';
+            
+            try {
+                // Update status in database
+                const response = await fetch(`http://127.0.0.1:8000/sources/${source.id}/status`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ status: newStatus }),
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // Update local state
+                sources[index].status = newStatus;
+                updateSourcesList();
+                
+                console.log(`✓ Source ${source.sourceName} status updated to ${newStatus}`);
+                
+            } catch (error) {
+                console.error("Error updating source status:", error);
+                // Revert the toggle if it failed
+                updateSourcesList();
+                alert(`Failed to update source status: ${error.message}`);
+            }
+        }
+
+        function editSource(index) {
+            const source = sources[index];
+            currentEditingIndex = index;
+            
+            // Fill form with existing data
+            sourceForm.url.value = source.url;
+            sourceForm.sourceName.value = source.sourceName;
+            sourceForm.sourceType.value = source.sourceType;
+            sourceForm.xpath.value = source.xpath || '';
+            sourceForm.paginationRule.value = source.pagination || '';
+            sourceForm.contentXpath.value = source.contentXpath || '';
+            sourceForm.contentDateXpath.value = source.contentDateXpath || '';
+            
+            showNewSourceForm();
+        }
+
+        function deleteSource(index) {
+            if (confirm('Are you sure you want to delete this source?')) {
+                sources.splice(index, 1);
+                updateSourcesList();
+            }
+        }
+
+        async function crawlAllSources() {
+            // Filter only active sources
+            const activeSources = sources.filter(source => source.status === 'active');
+            
+            if (activeSources.length === 0) {
+                alert('No active sources found. Please add sources and make sure they are active (toggle switch ON).');
+                return;
+            }
+
+            console.log(`Crawling ${activeSources.length} active sources out of ${sources.length} total sources`);
+
+            // Show loading state
+            resultsContainer.classList.add("hidden");
+            errorBox.classList.add("hidden");
+            crawlText.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Analyzing ${activeSources.length} Active Sources...`;
+            crawlAllBtn.disabled = true;
+
+            try {
+                // Get selected crawl days
+                const selectedDays = parseInt(crawlDays.value);
+                console.log(`Crawling with ${selectedDays} days filter`);
+                
+                const response = await fetch("http://127.0.0.1:8000/crawl-multiple", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ 
+                        sources: activeSources,
+                        days: selectedDays
+                    }),
+                    mode: 'cors'
+                });
+
+                console.log("Response status:", response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("Response error:", errorText);
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log("Response data:", result);
+                displayResults(result);
+
+            } catch (error) {
+                console.error("Full error:", error);
+                errorText.textContent = `An error occurred: ${error.message}`;
+                errorBox.classList.remove("hidden");
+            } finally {
+                // Reset button state
+                crawlText.innerHTML = '<i class="fas fa-search mr-2"></i>Analyze All Sources';
+                crawlAllBtn.disabled = false;
+            }
+        }
+
+        // Helper function to get sentiment badge color
+        function getSentimentColor(sentiment) {
+            switch (sentiment.toLowerCase()) {
+                case 'positive': return 'bg-green-100 text-green-800 border-green-200';
+                case 'negative': return 'bg-red-100 text-red-800 border-red-200';
+                case 'neutral': return 'bg-gray-100 text-gray-800 border-gray-200';
+                default: return 'bg-gray-100 text-gray-800 border-gray-200';
+            }
+        }
+
+        // Helper function to format date
+        function formatDate(dateString) {
+            try {
+                return new Date(dateString).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch {
+                return dateString;
+            }
+        }
+
+        // Helper function to truncate text
+        function truncateText(text, maxLength = 300) {
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        function displayResults(data) {
+            // Display metadata
+            const metadataContent = document.getElementById("metadataContent");
+            if (data.metadata) {
+                metadataContent.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div>
+                            <span class="font-semibold">Sources Analyzed:</span> ${data.metadata.sources_analyzed || 0}
+                        </div>
+                        <div>
+                            <span class="font-semibold">Total Posts:</span> ${data.metadata.total_posts_analyzed || 0}
+                        </div>
+                        <div>
+                            <span class="font-semibold">Unique Stocks:</span> ${data.metadata.unique_stocks_found || 0}
+                        </div>
+                        <div>
+                            <span class="font-semibold">Analysis Time:</span> ${data.metadata.analysis_duration || 'N/A'}
+                        </div>
+                        <div>
+                            <span class="font-semibold">Success Rate:</span> ${data.metadata.success_rate || 'N/A'}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Display aggregated stock analysis (STOCK-LEVEL VIEW)
+            const stockAnalysisContent = document.getElementById("stockAnalysisContent");
+            if (data.stock_analysis && data.stock_analysis.length > 0) {
+                stockAnalysisContent.innerHTML = data.stock_analysis.map(stock => `
+                    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-lg">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-3">
+                                <h3 class="text-xl font-bold text-gray-800">
+                                    <i class="fas fa-dollar-sign mr-2 text-[#23c49e]"></i>${stock.stock_symbol}
+                                </h3>
+                                ${stock.isvn30 ? '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full border border-yellow-300"><i class="fas fa-star mr-1"></i>VN30</span>' : ''}
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="px-3 py-1 rounded-full text-sm font-medium border ${getSentimentColor(stock.overall_sentiment)}">
+                                    Overall: ${stock.overall_sentiment.charAt(0).toUpperCase() + stock.overall_sentiment.slice(1)}
+                                </span>
+                                <span class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+                                    <i class="fas fa-hashtag mr-1"></i>${stock.mentioned_count} posts
+                                </span>
+                                <span class="text-sm bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-medium">
+                                    <i class="fas fa-globe mr-1"></i>${stock.sources_count || 0} sources
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Stock Summary -->
+                        <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-chart-line mr-1"></i>Stock Analysis Summary:
+                            </h4>
+                            <p class="text-gray-700 text-sm leading-relaxed">${stock.stock_summary}</p>
+                        </div>
+                        
+                        <!-- Posts mentioning this stock -->
+                        <div class="border-t pt-4">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-newspaper mr-1"></i>Posts mentioning ${stock.stock_symbol}:
+                            </h4>
+                            <div class="space-y-3 max-h-80 overflow-y-auto">
+                                ${stock.post_details.map((post, index) => `
+                                    <div class="bg-gray-50 rounded-lg p-3 border-l-4 border-[#23c49e]">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div class="flex items-center space-x-3">
+                                                <span class="text-xs font-medium text-gray-600">Post ${index + 1}</span>
+                                                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                                    ${post.source_name || 'Unknown Source'}
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="px-2 py-1 rounded text-xs ${getSentimentColor(post.sentiment)}">
+                                                    ${post.sentiment}
+                                                </span>
+                                                <span class="text-xs text-gray-500">${formatDate(post.date)}</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <a href="${post.url}" target="_blank" 
+                                               class="text-[#23c49e] hover:text-[#1fa385] text-xs break-all">
+                                                <i class="fas fa-external-link-alt mr-1"></i>${post.url}
+                                            </a>
+                                        </div>
+                                        <div class="text-xs text-gray-700">
+                                            <strong>About ${stock.stock_symbol}:</strong> ${post.summary}
+                                        </div>
+                                        ${post.post_summary ? `
+                                            <div class="text-xs text-gray-600 mt-1 italic">
+                                                <strong>Post Summary:</strong> ${truncateText(post.post_summary, 150)}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- Stock Price Charts -->
+                        <div class="border-t pt-4 mt-4">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-chart-area mr-1"></i>Price Trends:
+                            </h4>
+                            <div class="bg-gray-50 rounded border p-3">
+                                <div class="flex justify-center space-x-2 mb-3">
+                                    <button class="chart-period-btn text-xs px-2 py-1 rounded bg-[#23c49e] text-white" data-period="7d" data-symbol="${stock.stock_symbol}">7D</button>
+                                    <button class="chart-period-btn text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300" data-period="1m" data-symbol="${stock.stock_symbol}">1M</button>
+                                    <button class="chart-period-btn text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300" data-period="3m" data-symbol="${stock.stock_symbol}">3M</button>
+                                </div>
+                                <div style="height: 250px; position: relative;">
+                                    <canvas id="chart-${stock.stock_symbol}" class="w-full h-full"></canvas>
+                                </div>
+                                <div id="chart-loading-${stock.stock_symbol}" class="text-center py-8 text-gray-500 hidden">
+                                    <i class="fas fa-spinner fa-spin text-sm mb-1"></i>
+                                    <p class="text-xs">Loading chart...</p>
+                                </div>
+                                <div id="chart-error-${stock.stock_symbol}" class="text-center py-4 text-red-500 text-xs hidden">
+                                    <i class="fas fa-exclamation-triangle mb-1"></i>
+                                    <p>No price data available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                stockAnalysisContent.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-chart-line text-4xl mb-4"></i>
+                        <p>No stocks mentioned in the analyzed posts</p>
+                    </div>
+                `;
+            }
+
+            // Display individual posts with their analysis (grouped by source)
+            const postsContent = document.getElementById("postsContent");
+            if (data.posts && data.posts.length > 0) {
+                // Group posts by source
+                const postsBySource = {};
+                data.posts.forEach(post => {
+                    const sourceName = post.source_name || 'Unknown Source';
+                    if (!postsBySource[sourceName]) {
+                        postsBySource[sourceName] = [];
+                    }
+                    postsBySource[sourceName].push(post);
+                });
+
+                postsContent.innerHTML = Object.entries(postsBySource).map(([sourceName, posts]) => `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">
+                            <i class="fas fa-globe mr-2 text-[#23c49e]"></i>${sourceName} (${posts.length} posts)
+                        </h3>
+                        <div class="space-y-4">
+                            ${posts.map((post, index) => `
+                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                    <!-- Post Header -->
+                                    <div class="flex items-start justify-between mb-3">
+                                        <h4 class="font-medium text-gray-800">
+                                            <i class="fas fa-file-alt mr-2 text-[#23c49e]"></i>Post ${index + 1}
+                                        </h4>
+                                        <div class="text-right text-sm text-gray-500">
+                                            <div><i class="fas fa-calendar mr-1"></i>${formatDate(post.createdDate)}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Post URL -->
+                                    <div class="mb-3">
+                                        <a href="${post.url}" target="_blank" 
+                                           class="text-[#23c49e] hover:text-[#1fa385] text-sm break-all">
+                                            <i class="fas fa-external-link-alt mr-1"></i>${post.url}
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Post Summary -->
+                                    <div class="mb-3 p-2 bg-white rounded">
+                                        <h5 class="text-xs font-semibold text-gray-700 mb-1">Summary:</h5>
+                                        <p class="text-gray-700 text-xs leading-relaxed">${post.summary}</p>
+                                    </div>
+                                    
+                                    <!-- Mentioned Stocks -->
+                                    <div>
+                                        <h5 class="text-xs font-semibold text-gray-700 mb-2">
+                                            Stocks Mentioned (${post.mentionedStocks.length}):
+                                        </h5>
+                                        ${post.mentionedStocks.length > 0 ? `
+                                            <div class="flex flex-wrap gap-2">
+                                                ${post.mentionedStocks.map(stock => `
+                                                    <span class="inline-flex items-center space-x-1 px-2 py-1 bg-white rounded text-xs">
+                                                        <span class="font-medium">${stock.stock_symbol}</span>
+                                                        <span class="px-1 rounded ${getSentimentColor(stock.sentiment)} text-xs">
+                                                            ${stock.sentiment}
+                                                        </span>
+                                                    </span>
+                                                `).join('')}
+                                            </div>
+                                        ` : `
+                                            <p class="text-xs text-gray-500 italic">No stocks mentioned</p>
+                                        `}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                postsContent.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-newspaper text-4xl mb-4"></i>
+                        <p>No posts found</p>
+                    </div>
+                `;
+            }
+
+            resultsContainer.classList.remove("hidden");
+            
+            // Load charts for analysis results
+            if (data.stock_analysis && data.stock_analysis.length > 0) {
+                setTimeout(() => {
+                    data.stock_analysis.forEach(stock => {
+                        loadStockChart(stock.stock_symbol, '7d');
+                    });
+                }, 100);
+            }
+        }
+
+        // Global chart instances storage
+        const chartInstances = {};
+
+        // Chart functionality
+        async function loadStockChart(symbol, period = '7d') {
+            const canvasId = `chart-${symbol}`;
+            const loadingId = `chart-loading-${symbol}`;
+            const errorId = `chart-error-${symbol}`;
+
+            // Show loading
+            const loadingEl = document.getElementById(loadingId);
+            const errorEl = document.getElementById(errorId);
+            const canvas = document.getElementById(canvasId);
+
+            if (loadingEl) loadingEl.classList.remove('hidden');
+            if (errorEl) errorEl.classList.add('hidden');
+
+            try {
+                const response = await fetch(`/stock-prices/${symbol}?period=${period}`);
+                const data = await response.json();
+
+                if (loadingEl) loadingEl.classList.add('hidden');
+
+                if (!response.ok || !data.chart_config || !data.chart_config.data.labels.length) {
+                    if (errorEl) errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                // Destroy existing chart
+                if (chartInstances[canvasId]) {
+                    chartInstances[canvasId].destroy();
+                }
+
+                // Create new chart
+                const ctx = canvas.getContext('2d');
+                chartInstances[canvasId] = new Chart(ctx, data.chart_config);
+
+            } catch (error) {
+                console.error('Error loading chart:', error);
+                if (loadingEl) loadingEl.classList.add('hidden');
+                if (errorEl) errorEl.classList.remove('hidden');
+            }
+        }
+
+        // Filter functionality
+        let currentStocksData = [];
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('stockSearch').value.toLowerCase();
+            const sentimentFilter = document.getElementById('sentimentFilter').value;
+            const vn30Filter = document.getElementById('vn30Filter').value;
+            const sortBy = document.getElementById('sortBy').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+
+            let filteredStocks = [...currentStocksData];
+
+            // Apply search filter
+            if (searchTerm) {
+                filteredStocks = filteredStocks.filter(stock => 
+                    stock.symbol.toLowerCase().includes(searchTerm) ||
+                    stock.name.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // Apply sentiment filter
+            if (sentimentFilter) {
+                filteredStocks = filteredStocks.filter(stock => 
+                    stock.sentiment.toLowerCase() === sentimentFilter.toLowerCase()
+                );
+            }
+
+            // Apply VN30 filter
+            if (vn30Filter !== '') {
+                const isVN30 = vn30Filter === 'true';
+                filteredStocks = filteredStocks.filter(stock => 
+                    Boolean(stock.isvn30) === isVN30
+                );
+            }
+
+            // Apply sorting
+            filteredStocks.sort((a, b) => {
+                let aVal, bVal;
+                
+                switch(sortBy) {
+                    case 'posts_count':
+                        aVal = a.posts_count || 0;
+                        bVal = b.posts_count || 0;
+                        break;
+                    case 'symbol':
+                        aVal = a.symbol;
+                        bVal = b.symbol;
+                        break;
+                    case 'last_updated':
+                        aVal = new Date(a.last_updated);
+                        bVal = new Date(b.last_updated);
+                        break;
+                    case 'sentiment':
+                        const sentimentOrder = { 'positive': 3, 'neutral': 2, 'negative': 1 };
+                        aVal = sentimentOrder[a.sentiment] || 0;
+                        bVal = sentimentOrder[b.sentiment] || 0;
+                        break;
+                    default:
+                        aVal = a[sortBy];
+                        bVal = b[sortBy];
+                }
+
+                if (sortOrder === 'desc') {
+                    return bVal > aVal ? 1 : -1;
+                } else {
+                    return aVal > bVal ? 1 : -1;
+                }
+            });
+
+            displayRecentStocks(filteredStocks, document.getElementById('dashboardDays').value);
+        }
+
+        function clearFilters() {
+            document.getElementById('stockSearch').value = '';
+            document.getElementById('sentimentFilter').value = '';
+            document.getElementById('vn30Filter').value = '';
+            document.getElementById('sortBy').value = 'posts_count';
+            document.getElementById('sortOrder').value = 'desc';
+            applyFilters();
+        }
+
+        // Event listeners setup
+        function setupEventListeners() {
+            // Filter event listeners
+            document.getElementById('stockSearch').addEventListener('input', applyFilters);
+            document.getElementById('sentimentFilter').addEventListener('change', applyFilters);
+            document.getElementById('vn30Filter').addEventListener('change', applyFilters);
+            document.getElementById('sortBy').addEventListener('change', applyFilters);
+            document.getElementById('sortOrder').addEventListener('change', applyFilters);
+            document.getElementById('clearFilters').addEventListener('click', clearFilters);
+
+            // Chart period button event delegation
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('chart-period-btn')) {
+                    const symbol = e.target.dataset.symbol;
+                    const period = e.target.dataset.period;
+                    
+                    // Update button states
+                    const buttons = document.querySelectorAll(`[data-symbol="${symbol}"].chart-period-btn`);
+                    buttons.forEach(btn => {
+                        btn.classList.remove('bg-[#23c49e]', 'text-white');
+                        btn.classList.add('bg-gray-200', 'text-gray-700');
+                    });
+                    
+                    e.target.classList.remove('bg-gray-200', 'text-gray-700');
+                    e.target.classList.add('bg-[#23c49e]', 'text-white');
+                    
+                    // Load chart
+                    loadStockChart(symbol, period);
+                }
+            });
+        }
+
+        // Override the original displayRecentStocks to save data and load charts
+        const originalDisplayRecentStocks = displayRecentStocks;
+        function displayRecentStocks(stocks, days) {
+            currentStocksData = stocks || [];
+            originalDisplayRecentStocks(stocks, days);
+            
+            // Load default charts after a brief delay to ensure DOM is ready
+            setTimeout(() => {
+                stocks.forEach(stock => {
+                    loadStockChart(stock.symbol, '7d');
+                });
+            }, 100);
+        }
+
+        // Initialize event listeners when DOM is loaded
+        document.addEventListener('DOMContentLoaded', setupEventListeners);
+    </script>
+</body>
+
+</html>
