@@ -16,8 +16,7 @@ lxml==5.3.0
 requests==2.32.3
 
 # AI and Google Services
-google-generativeai
-google-adk
+google-generativeai==0.8.3
 
 # Database and Supabase
 supabase==2.10.0
@@ -47,7 +46,6 @@ numpy==1.26.4
 python-dateutil==2.9.0.post0
 
 # Async Support
-asyncio
 aiosqlite==0.20.0
 
 # Text Processing
@@ -56,3 +54,6 @@ regex==2024.9.11
 # Development and Testing
 pytest
 pytest-asyncio
+
+# Chrome dependencies for deployment
+chromedriver-autoinstaller
