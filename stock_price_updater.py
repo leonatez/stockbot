@@ -10,7 +10,13 @@ import sys
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import pandas as pd
-from vnstock import Vnstock
+try:
+    from vnstock import Vnstock
+    VNSTOCK_AVAILABLE = True
+except ImportError as e:
+    print(f"VNStock import error in stock_price_updater: {e}")
+    print("Stock price update feature will be disabled until VNStock is properly installed")
+    VNSTOCK_AVAILABLE = False
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -242,6 +248,10 @@ def update_mentioned_stocks_prices(mentioned_stocks_data: List[Dict[str, Any]]) 
     Returns:
         Dictionary mapping symbol to update success status
     """
+    if not VNSTOCK_AVAILABLE:
+        print("VNStock not available - stock price update skipped")
+        return {}
+    
     # Extract unique stock symbols
     stock_symbols = set()
     

@@ -6,8 +6,16 @@ Fetches and updates company overview, events, and dividends for mentioned stocks
 import pandas as pd
 from typing import List, Dict, Any, Optional
 from database import db_service
-from vnstock import Vnstock
-from vnstock.explorer.vci import Company
+
+# Import vnstock components individually to avoid conflicts
+try:
+    from vnstock import Vnstock
+    from vnstock.explorer.vci import Company
+    VNSTOCK_AVAILABLE = True
+except ImportError as e:
+    print(f"VNStock import error: {e}")
+    print("Company information features will be disabled until VNStock is properly installed")
+    VNSTOCK_AVAILABLE = False
 
 
 async def update_company_information(stock_symbols: List[str]) -> Dict[str, bool]:
@@ -20,6 +28,10 @@ async def update_company_information(stock_symbols: List[str]) -> Dict[str, bool
     Returns:
         Dictionary with stock symbols as keys and success status as values
     """
+    if not VNSTOCK_AVAILABLE:
+        print("VNStock not available - company information update skipped")
+        return {symbol: False for symbol in stock_symbols}
+    
     results = {}
     
     for symbol in stock_symbols:

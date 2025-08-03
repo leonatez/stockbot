@@ -8,7 +8,13 @@ Should be run daily as part of the analysis workflow.
 import os
 import sys
 from typing import List, Set
-from vnstock import Listing
+try:
+    from vnstock import Listing
+    VNSTOCK_AVAILABLE = True
+except ImportError as e:
+    print(f"VNStock import error in daily_vn30_update: {e}")
+    print("VN30 update feature will be disabled until VNStock is properly installed")
+    VNSTOCK_AVAILABLE = False
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -114,6 +120,10 @@ def daily_vn30_update() -> bool:
     Returns:
         bool: True if update was successful
     """
+    if not VNSTOCK_AVAILABLE:
+        print("VNStock not available - VN30 update skipped")
+        return False
+    
     print("🔄 Starting daily VN30 update...")
     
     # Step 1: Get current VN30 symbols
