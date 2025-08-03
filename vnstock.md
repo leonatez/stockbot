@@ -73,5 +73,21 @@ vn30_symbols = set(vn30_list.tolist()) if vn30_list is not None else set()
 #4. This runs at the start of every /crawl and /crawl-multiple API call
 
 
+#GET MORE COMPANY INFORMATION
+#Initiate company instance:
+from vnstock.explorer.vci import Company
+company = Company('ACB') #Replace 'ACB' by actual stock symbol we want to check
+
+#GET number of issue share by this function
+company.overview() #this will return a dataframe of stock symbol, including columns 'symbol', 'issue_share', 'charter_capital'. Just care those columns and ignore the remaining columns.
+
+#GET company events by this function:
+company.events() #this will return a dataframe of the stock symbol, including all columns in table stock_events. This is the source of info to insert to table stock_events.
+
+#GET company dividend summary: This function we need to initiate a different company instance than other functions:
+company = Vnstock().stock(symbol='VIN', source='TCBS').company #keep the source is always 'TCBS', while replace symbols 'VIN' to the symbol we want to check
+company.dividends() #this will return a dataframe of the stock dividend, including 'exercise_date','cash_year','cash_dividend_percentage','issue_method'
+
+
 
 

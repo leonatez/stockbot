@@ -498,5 +498,216 @@ class DatabaseService:
             print(f"Error fetching latest daily sentiment summary: {e}")
             return ""
 
+    # ===== COMPANY INFORMATION UPDATES =====
+    
+    async def update_company_overview(self, stock_symbol: str, overview_data: Dict[str, Any]) -> bool:
+        """
+        Update stock table with company overview information (issue_share, charter_capital)
+        
+        Args:
+            stock_symbol: Stock symbol (e.g., 'ACB')
+            overview_data: Dictionary containing overview data with 'issue_share' and 'charter_capital'
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Get stock ID
+            stock_result = self.supabase.table("stocks").select("id").eq("symbol", stock_symbol).execute()
+            
+            if not stock_result.data:
+                print(f"Stock {stock_symbol} not found for overview update")
+                return False
+            
+            stock_id = stock_result.data[0]["id"]
+            
+            # Update stocks table with issue_share and charter_capital
+            update_data = {}
+            if 'issue_share' in overview_data and overview_data['issue_share'] is not None:
+                update_data['issue_share'] = int(overview_data['issue_share'])
+            if 'charter_capital' in overview_data and overview_data['charter_capital'] is not None:
+                update_data['charter_capital'] = float(overview_data['charter_capital'])
+            
+            if update_data:
+                update_data['updated_at'] = datetime.now().isoformat()
+                
+                result = self.supabase.table("stocks").update(update_data).eq("id", stock_id).execute()
+                
+                if result.data:
+                    print(f"✓ Company overview updated for {stock_symbol}: {update_data}")
+                    return True
+                else:
+                    print(f"✗ Failed to update company overview for {stock_symbol}")
+                    return False
+            else:
+                print(f"No valid overview data to update for {stock_symbol}")
+                return True
+            
+        except Exception as e:
+            print(f"✗ Error updating company overview for {stock_symbol}: {e}")
+            return False
+
+    async def update_company_events(self, stock_symbol: str, events_data: List[Dict[str, Any]]) -> bool:
+        """
+        Update stock_events table with company events
+        
+        Args:
+            stock_symbol: Stock symbol (e.g., 'ACB')
+            events_data: List of dictionaries containing event data
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Get stock ID
+            stock_result = self.supabase.table("stocks").select("id").eq("symbol", stock_symbol).execute()
+            
+            if not stock_result.data:
+                print(f"Stock {stock_symbol} not found for events update")
+                return False
+            
+            stock_id = stock_result.data[0]["id"]
+            
+            # Process each event
+            updated_count = 0
+            for event in events_data:
+                try:
+                    # Prepare event data for database
+                    db_event = {
+                        "stock_id": stock_id,
+                        "event_type": event.get("event_type", ""),
+                        "event_name": event.get("event_name", ""),
+                        "event_date": event.get("event_date"),
+                        "ex_date": event.get("ex_date"),
+                        "record_date": event.get("record_date"),
+                        "issue_date": event.get("issue_date"),
+                        "ratio": event.get("ratio"),
+                        "value": event.get("value"),
+                        "place": event.get("place", ""),
+                        "description": event.get("description", ""),
+                        "created_at": datetime.now().isoformat()
+                    }
+                    
+                    # Use upsert to avoid duplicates (if event_name and event_date are unique)
+                    result = self.supabase.table("stock_events").upsert(db_event).execute()
+                    
+                    if result.data:
+                        updated_count += 1
+                        print(f"✓ Event updated for {stock_symbol}: {event.get('event_name', 'Unknown event')}")
+                    
+                except Exception as event_error:
+                    print(f"✗ Error processing event for {stock_symbol}: {event_error}")
+                    continue
+            
+            print(f"✓ Updated {updated_count} events for {stock_symbol}")
+            return updated_count > 0
+            
+        except Exception as e:
+            print(f"✗ Error updating company events for {stock_symbol}: {e}")
+            return False
+
+    async def update_company_dividends(self, stock_symbol: str, dividends_data: List[Dict[str, Any]]) -> bool:
+        """
+        Update stock_dividends table with company dividend information
+        
+        Args:
+            stock_symbol: Stock symbol (e.g., 'ACB')
+            dividends_data: List of dictionaries containing dividend data with 
+                          'exercise_date', 'cash_year', 'cash_dividend_percentage', 'issue_method'
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Get stock ID
+            stock_result = self.supabase.table("stocks").select("id").eq("symbol", stock_symbol).execute()
+            
+            if not stock_result.data:
+                print(f"Stock {stock_symbol} not found for dividends update")
+                return False
+            
+            stock_id = stock_result.data[0]["id"]
+            
+            # Process each dividend record
+            updated_count = 0
+            for dividend in dividends_data:
+                try:
+                    # Prepare dividend data for database
+                    db_dividend = {
+                        "stock_id": stock_id,
+                        "exercise_date": dividend.get("exercise_date"),
+                        "cash_year": int(dividend.get("cash_year")) if dividend.get("cash_year") else None,
+                        "cash_dividend_percentage": float(dividend.get("cash_dividend_percentage")) if dividend.get("cash_dividend_percentage") else None,
+                        "issue_method": dividend.get("issue_method", ""),
+                        "created_at": datetime.now().isoformat(),
+                        "updated_at": datetime.now().isoformat()
+                    }
+                    
+                    # Use upsert to avoid duplicates based on unique constraint (stock_id, exercise_date, cash_year)
+                    result = self.supabase.table("stock_dividends").upsert(db_dividend).execute()
+                    
+                    if result.data:
+                        updated_count += 1
+                        print(f"✓ Dividend updated for {stock_symbol}: {dividend.get('exercise_date', 'Unknown date')}")
+                    
+                except Exception as dividend_error:
+                    print(f"✗ Error processing dividend for {stock_symbol}: {dividend_error}")
+                    continue
+            
+            print(f"✓ Updated {updated_count} dividends for {stock_symbol}")
+            return updated_count > 0
+            
+        except Exception as e:
+            print(f"✗ Error updating company dividends for {stock_symbol}: {e}")
+            return False
+
+    async def get_company_additional_info(self, stock_symbol: str) -> Dict[str, Any]:
+        """
+        Get additional company information (overview, events, dividends) for frontend display
+        
+        Args:
+            stock_symbol: Stock symbol (e.g., 'ACB')
+            
+        Returns:
+            Dictionary containing company overview, recent events, and recent dividends
+        """
+        try:
+            # Get stock ID and basic info
+            stock_result = self.supabase.table("stocks").select(
+                "id, symbol, organ_name, exchange, issue_share, charter_capital"
+            ).eq("symbol", stock_symbol).execute()
+            
+            if not stock_result.data:
+                return {}
+            
+            stock_data = stock_result.data[0]
+            stock_id = stock_data["id"]
+            
+            # Get recent events (last 10)
+            events_result = self.supabase.table("stock_events").select(
+                "event_type, event_name, event_date, ex_date, record_date, ratio, value, description"
+            ).eq("stock_id", stock_id).order("event_date", desc=True).limit(10).execute()
+            
+            # Get recent dividends (last 5)
+            dividends_result = self.supabase.table("stock_dividends").select(
+                "exercise_date, cash_year, cash_dividend_percentage, issue_method"
+            ).eq("stock_id", stock_id).order("exercise_date", desc=True).limit(5).execute()
+            
+            return {
+                "overview": {
+                    "symbol": stock_data["symbol"],
+                    "name": stock_data["organ_name"],
+                    "exchange": stock_data["exchange"],
+                    "issue_share": stock_data.get("issue_share"),
+                    "charter_capital": stock_data.get("charter_capital")
+                },
+                "recent_events": events_result.data if events_result.data else [],
+                "recent_dividends": dividends_result.data if dividends_result.data else []
+            }
+            
+        except Exception as e:
+            print(f"✗ Error getting company additional info for {stock_symbol}: {e}")
+            return {}
+
 # Global database service instance
 db_service = DatabaseService()

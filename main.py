@@ -27,6 +27,7 @@ from dotenv import load_dotenv
 from database import db_service
 from daily_vn30_update import daily_vn30_update
 from stock_price_updater import update_mentioned_stocks_prices
+from company_info_updater import update_company_information
 
 
 load_dotenv()
@@ -979,6 +980,17 @@ async def crawl_endpoint(request: CrawlRequest):
             except Exception as price_error:
                 print(f"⚠️ Error updating stock prices: {price_error}")
                 # Continue with response even if price update fails
+            
+            # Update company information for mentioned stocks
+            print(f"\n=== Updating Company Information ===")
+            try:
+                mentioned_symbols = [stock["stock_symbol"] for stock in stock_level_analysis]
+                company_update_results = await update_company_information(mentioned_symbols)
+                successful_updates = sum(1 for success in company_update_results.values() if success)
+                print(f"✓ Company info update completed for {successful_updates}/{len(mentioned_symbols)} stocks")
+            except Exception as company_error:
+                print(f"⚠️ Error updating company information: {company_error}")
+                # Continue with response even if company update fails
         
         return JSONResponse(content=response_data)
         
@@ -1343,6 +1355,17 @@ async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
             except Exception as price_error:
                 print(f"⚠️ Error updating stock prices: {price_error}")
                 # Continue with response even if price update fails
+            
+            # Update company information for mentioned stocks
+            print(f"\n=== Updating Company Information ===")
+            try:
+                mentioned_symbols = [stock["stock_symbol"] for stock in aggregated_stock_analysis]
+                company_update_results = await update_company_information(mentioned_symbols)
+                successful_updates = sum(1 for success in company_update_results.values() if success)
+                print(f"✓ Company info update completed for {successful_updates}/{len(mentioned_symbols)} stocks")
+            except Exception as company_error:
+                print(f"⚠️ Error updating company information: {company_error}")
+                # Continue with response even if company update fails
         
         return JSONResponse(content=response_data)
         
@@ -1439,6 +1462,35 @@ async def get_recent_stocks(days: int = 3):
     except Exception as e:
         print(f"Error fetching recent stocks: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch recent stocks: {str(e)}")
+
+@app.get("/company-info/{symbol}")
+async def get_company_info(symbol: str):
+    """
+    Get additional company information (overview, events, dividends) for a stock symbol
+    
+    Args:
+        symbol: Stock symbol (e.g., ACB, HPG)
+    
+    Returns:
+        JSON with company overview, recent events, and recent dividends
+    """
+    try:
+        company_info = await db_service.get_company_additional_info(symbol)
+        
+        if not company_info:
+            raise HTTPException(status_code=404, detail=f"Company information not found for {symbol}")
+        
+        return JSONResponse(content={
+            "symbol": symbol,
+            "company_info": company_info,
+            "data_updated": True
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching company info for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch company info: {str(e)}")
 
 @app.get("/stock-prices/{symbol}")
 async def get_stock_prices(symbol: str, period: str = "7d"):
