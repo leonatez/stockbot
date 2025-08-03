@@ -1,7 +1,7 @@
 -- Create stock_dividends table to track company dividend information
 CREATE TABLE IF NOT EXISTS stock_dividends (
     id SERIAL PRIMARY KEY,
-    stock_id INTEGER REFERENCES stocks(id) ON DELETE CASCADE,
+    stock_id UUID REFERENCES stocks(id) ON DELETE CASCADE,
     exercise_date DATE,
     cash_year INTEGER,
     cash_dividend_percentage DECIMAL(10,4),

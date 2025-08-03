@@ -31,6 +31,11 @@ industry_id (UUID): Foreign key to industries table
 sector (TEXT): Additional sector classification
 listed_date (DATE): Stock listing date
 description (TEXT): Company description
+issue_share (BIGINT): Number of issued shares
+charter_capital (DECIMAL): Company charter capital
+isvn30 (BOOLEAN): Whether stock is in VN30 index
+organ_name (TEXT): Official company name
+created_at, updated_at (TIMESTAMP): Record creation and modification times
 
 4. Posts Table
 Purpose: Stores scraped news articles and content
@@ -99,6 +104,18 @@ event_list_code (TEXT): Event classification code
 ratio, value (TEXT): Event parameters (dividends, splits, etc.)
 record_date, exright_date (DATE): Important dates for shareholders
 event_list_name, en__event_list_name (TEXT): Event type names
+
+11. Stock Dividends Table
+Purpose: Tracks company dividend payments and distributions
+
+id (SERIAL, Primary Key): Unique identifier
+stock_id (UUID): Foreign key to stocks table
+exercise_date (DATE): Date when dividend is exercised/paid
+cash_year (INTEGER): Year of the dividend payment
+cash_dividend_percentage (DECIMAL): Dividend percentage rate
+issue_method (TEXT): Method of dividend issuance
+created_at, updated_at (TIMESTAMP): Record creation and modification times
+Unique constraint: (stock_id, exercise_date, cash_year) - prevents duplicate dividend records
 
 Key Data Flow Patterns
 
