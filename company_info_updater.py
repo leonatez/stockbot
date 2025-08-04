@@ -141,25 +141,65 @@ async def update_company_events(stock_symbol: str) -> bool:
         
         # Convert DataFrame to list of dictionaries
         events_data = []
+        print(f"Debug: Events DataFrame columns for {stock_symbol}: {list(events_df.columns)}")
+        if not events_df.empty:
+            print(f"Debug: First event sample: {events_df.iloc[0].to_dict()}")
+        
         for _, row in events_df.iterrows():
             event_dict = row.to_dict()
             
-            # Clean up the data - convert NaN to None and handle dates
+            # Clean up the data and map vnstock column names to database column names
             cleaned_event = {}
-            for key, value in event_dict.items():
-                if pd.isna(value):
-                    cleaned_event[key] = None
-                elif key in ['event_date', 'ex_date', 'record_date', 'issue_date'] and value:
-                    # Ensure date fields are properly formatted
-                    try:
-                        if isinstance(value, str):
-                            cleaned_event[key] = value
-                        else:
-                            cleaned_event[key] = str(value)
-                    except:
-                        cleaned_event[key] = None
+            
+            # Map vnstock columns to database columns
+            column_mapping = {
+                'event_list_name': 'event_type',      # vnstock: event_list_name -> DB: event_type
+                'event_title': 'event_name',          # vnstock: event_title -> DB: event_name
+                'public_date': 'event_date',          # vnstock: public_date -> DB: event_date
+                'exright_date': 'ex_date',            # vnstock: exright_date -> DB: ex_date
+                'record_date': 'record_date',         # vnstock: record_date -> DB: record_date (same)
+                'issue_date': 'issue_date',           # vnstock: issue_date -> DB: issue_date (same)
+                'ratio': 'ratio',                     # vnstock: ratio -> DB: ratio (same)
+                'value': 'value',                     # vnstock: value -> DB: value (same)
+            }
+            
+            # Additional mapping for description (use event_title as fallback)
+            description_mapping = {
+                'event_title': 'description',        # vnstock: event_title -> DB: description
+            }
+            
+            # Apply main column mapping and clean data
+            for vnstock_key, db_key in column_mapping.items():
+                if vnstock_key in event_dict:
+                    value = event_dict[vnstock_key]
+                    
+                    if pd.isna(value):
+                        cleaned_event[db_key] = None
+                    elif db_key in ['event_date', 'ex_date', 'record_date', 'issue_date'] and value:
+                        # Ensure date fields are properly formatted
+                        try:
+                            if isinstance(value, str):
+                                cleaned_event[db_key] = value
+                            else:
+                                cleaned_event[db_key] = str(value)
+                        except:
+                            cleaned_event[db_key] = None
+                    else:
+                        cleaned_event[db_key] = value
                 else:
-                    cleaned_event[key] = value
+                    # If vnstock column doesn't exist, set to None
+                    cleaned_event[db_key] = None
+            
+            # Apply description mapping separately to avoid conflicts
+            for vnstock_key, db_key in description_mapping.items():
+                if vnstock_key in event_dict:
+                    value = event_dict[vnstock_key]
+                    if not pd.isna(value):
+                        cleaned_event[db_key] = value
+                    else:
+                        cleaned_event[db_key] = None
+                else:
+                    cleaned_event[db_key] = None
             
             events_data.append(cleaned_event)
         

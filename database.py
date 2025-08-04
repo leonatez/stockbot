@@ -570,6 +570,9 @@ class DatabaseService:
             
             # Process each event
             updated_count = 0
+            if events_data:
+                print(f"Debug: First event data keys: {list(events_data[0].keys())}")
+            
             for event in events_data:
                 try:
                     # Prepare event data for database
@@ -593,7 +596,14 @@ class DatabaseService:
                     
                     if result.data:
                         updated_count += 1
-                        print(f"✓ Event updated for {stock_symbol}: {event.get('event_name', 'Unknown event')}")
+                        # Try different possible field names for event title
+                        event_title = (event.get('event_name') or 
+                                     event.get('event_title') or 
+                                     event.get('event_list_name') or 
+                                     event.get('en__event_title') or 
+                                     event.get('title') or 
+                                     'Unknown event')
+                        print(f"✓ Event updated for {stock_symbol}: {event_title}")
                     
                 except Exception as event_error:
                     print(f"✗ Error processing event for {stock_symbol}: {event_error}")
@@ -644,7 +654,11 @@ class DatabaseService:
                     }
                     
                     # Use upsert to avoid duplicates based on unique constraint (stock_id, exercise_date, cash_year)
-                    result = self.supabase.table("stock_dividends").upsert(db_dividend).execute()
+                    # Specify on_conflict parameter to ensure proper upsert behavior
+                    result = self.supabase.table("stock_dividends").upsert(
+                        db_dividend, 
+                        on_conflict="stock_id,exercise_date,cash_year"
+                    ).execute()
                     
                     if result.data:
                         updated_count += 1
@@ -683,10 +697,10 @@ class DatabaseService:
             stock_data = stock_result.data[0]
             stock_id = stock_data["id"]
             
-            # Get recent events (last 10)
+            # Get recent events (last 10) - order by created_at since event_date can be None
             events_result = self.supabase.table("stock_events").select(
                 "event_type, event_name, event_date, ex_date, record_date, ratio, value, description"
-            ).eq("stock_id", stock_id).order("event_date", desc=True).limit(10).execute()
+            ).eq("stock_id", stock_id).order("created_at", desc=True).limit(10).execute()
             
             # Get recent dividends (last 5)
             dividends_result = self.supabase.table("stock_dividends").select(

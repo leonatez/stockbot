@@ -303,6 +303,12 @@
         const refreshStocksBtn = document.getElementById("refreshStocksBtn");
         const stocksContent = document.getElementById("stocksContent");
         const stocksLoading = document.getElementById("stocksLoading");
+        
+        console.log("DOM elements found:", {
+            stocksContent: !!stocksContent,
+            stocksLoading: !!stocksLoading, 
+            dashboardDays: !!dashboardDays
+        });
 
         // Event listeners
         addNewPageBtn.addEventListener("click", showNewSourceForm);
@@ -321,7 +327,7 @@
         async function loadSourcesFromDatabase() {
             try {
                 console.log("Loading sources from database...");
-                const response = await fetch("http://127.0.0.1:8000/sources", {
+                const response = await fetch("/sources", {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -359,6 +365,7 @@
         }
 
         async function loadRecentStocks() {
+            console.log("loadRecentStocks function called");
             try {
                 const days = dashboardDays.value;
                 console.log(`Loading recent stocks from last ${days} days...`);
@@ -372,7 +379,7 @@
                     </div>
                 `;
                 
-                const response = await fetch(`http://127.0.0.1:8000/recent-stocks?days=${days}`, {
+                const response = await fetch(`/recent-stocks?days=${days}`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -401,6 +408,7 @@
         }
 
         function displayRecentStocks(stocks, days) {
+            console.log("displayRecentStocks called with:", stocks, days);
             if (!stocks || stocks.length === 0) {
                 stocksContent.innerHTML = `
                     <div class="text-center py-8 text-gray-500">
@@ -413,7 +421,8 @@
             }
 
             const stocksHtml = stocks.map(stock => {
-                const sentimentColor = getSentimentColor(stock.sentiment);
+                console.log("Processing stock:", stock.symbol, stock.overall_sentiment);
+                const sentimentColor = getSentimentColor(stock.overall_sentiment);
                 
                 // Build posts list HTML
                 const postsHtml = (stock.posts || []).map(post => `
@@ -454,7 +463,7 @@
                             </div>
                             <div class="flex items-center space-x-2">
                                 <span class="px-3 py-1 rounded-full text-sm font-medium ${sentimentColor}">
-                                    ${stock.sentiment}
+                                    ${stock.overall_sentiment}
                                 </span>
                                 <span class="text-sm text-gray-500">
                                     ${stock.posts_count} posts
@@ -462,7 +471,7 @@
                             </div>
                         </div>
                         <p class="text-sm text-gray-600 mb-3">
-                            <strong>${stock.name}</strong> • ${stock.exchange}
+                            <strong>${stock.organ_name}</strong> • ${stock.exchange}
                         </p>
                         
                         <!-- Latest Daily Sentiment Summary -->
@@ -471,7 +480,7 @@
                                 <i class="fas fa-chart-line mr-1"></i>Latest Analysis:
                             </h4>
                             <p class="text-sm text-blue-700">
-                                ${stock.summary || 'No analysis summary available'}
+                                ${stock.sentiment_summary || 'No analysis summary available'}
                             </p>
                         </div>
                         
@@ -482,6 +491,31 @@
                             </h4>
                             <div class="max-h-64 overflow-y-auto">
                                 ${postsHtml || '<p class="text-sm text-gray-500 italic">No posts available</p>'}
+                            </div>
+                        </div>
+                        
+                        <!-- Company Information -->
+                        <div class="mt-4">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-building mr-1"></i>Company Information:
+                            </h4>
+                            <div id="company-info-${stock.symbol}" class="bg-white rounded border p-3">
+                                <div class="flex justify-center mb-2">
+                                    <button class="load-company-info-btn text-xs px-3 py-1 rounded bg-[#23c49e] text-white hover:bg-[#1fa385]" data-symbol="${stock.symbol}">
+                                        <i class="fas fa-info-circle mr-1"></i>Load Company Details
+                                    </button>
+                                </div>
+                                <div id="company-details-${stock.symbol}" class="hidden">
+                                    <!-- Company details will be loaded here -->
+                                </div>
+                                <div id="company-loading-${stock.symbol}" class="text-center py-4 text-gray-500 hidden">
+                                    <i class="fas fa-spinner fa-spin text-sm mb-1"></i>
+                                    <p class="text-xs">Loading company information...</p>
+                                </div>
+                                <div id="company-error-${stock.symbol}" class="text-center py-4 text-red-500 text-xs hidden">
+                                    <i class="fas fa-exclamation-triangle mb-1"></i>
+                                    <p>Error loading company information</p>
+                                </div>
                             </div>
                         </div>
                         
@@ -517,14 +551,21 @@
                 `;
             }).join('');
 
-            stocksContent.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    ${stocksHtml}
-                </div>
+            console.log("About to set stocksContent.innerHTML");
+            try {
+                stocksContent.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${stocksHtml}
+                    </div>
                 <div class="text-center mt-4 text-sm text-gray-500">
                     Showing ${stocks.length} stocks from the last ${days} days
                 </div>
             `;
+                console.log("Successfully set stocksContent.innerHTML");
+            } catch (error) {
+                console.error("Error setting stocksContent.innerHTML:", error);
+                stocksContent.innerHTML = `<div class="text-center py-8 text-red-500">Error displaying stocks: ${error.message}</div>`;
+            }
         }
 
         function showNewSourceForm() {
@@ -563,7 +604,7 @@
             } else {
                 // Adding new source - save to database
                 try {
-                    const response = await fetch("http://127.0.0.1:8000/sources", {
+                    const response = await fetch("/sources", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -661,7 +702,7 @@
             
             try {
                 // Update status in database
-                const response = await fetch(`http://127.0.0.1:8000/sources/${source.id}/status`, {
+                const response = await fetch(`/sources/${source.id}/status`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -733,7 +774,7 @@
                 const selectedDays = parseInt(crawlDays.value);
                 console.log(`Crawling with ${selectedDays} days filter`);
                 
-                const response = await fetch("http://127.0.0.1:8000/crawl-multiple", {
+                const response = await fetch("/crawl-multiple", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -1109,14 +1150,14 @@
             if (searchTerm) {
                 filteredStocks = filteredStocks.filter(stock => 
                     stock.symbol.toLowerCase().includes(searchTerm) ||
-                    stock.name.toLowerCase().includes(searchTerm)
+                    (stock.organ_name && stock.organ_name.toLowerCase().includes(searchTerm))
                 );
             }
 
             // Apply sentiment filter
             if (sentimentFilter) {
                 filteredStocks = filteredStocks.filter(stock => 
-                    stock.sentiment.toLowerCase() === sentimentFilter.toLowerCase()
+                    stock.overall_sentiment && stock.overall_sentiment.toLowerCase() === sentimentFilter.toLowerCase()
                 );
             }
 
@@ -1138,27 +1179,35 @@
                         bVal = b.posts_count || 0;
                         break;
                     case 'symbol':
-                        aVal = a.symbol;
-                        bVal = b.symbol;
+                        aVal = a.symbol || '';
+                        bVal = b.symbol || '';
                         break;
                     case 'last_updated':
-                        aVal = new Date(a.last_updated);
-                        bVal = new Date(b.last_updated);
+                        aVal = new Date(a.last_updated || 0);
+                        bVal = new Date(b.last_updated || 0);
                         break;
                     case 'sentiment':
                         const sentimentOrder = { 'positive': 3, 'neutral': 2, 'negative': 1 };
-                        aVal = sentimentOrder[a.sentiment] || 0;
-                        bVal = sentimentOrder[b.sentiment] || 0;
+                        aVal = sentimentOrder[a.overall_sentiment] || 0;
+                        bVal = sentimentOrder[b.overall_sentiment] || 0;
                         break;
                     default:
-                        aVal = a[sortBy];
-                        bVal = b[sortBy];
+                        aVal = a[sortBy] || '';
+                        bVal = b[sortBy] || '';
                 }
 
-                if (sortOrder === 'desc') {
-                    return bVal > aVal ? 1 : -1;
+                if (typeof aVal === 'string' && typeof bVal === 'string') {
+                    if (sortOrder === 'desc') {
+                        return bVal.localeCompare(aVal);
+                    } else {
+                        return aVal.localeCompare(bVal);
+                    }
                 } else {
-                    return aVal > bVal ? 1 : -1;
+                    if (sortOrder === 'desc') {
+                        return bVal > aVal ? 1 : (bVal < aVal ? -1 : 0);
+                    } else {
+                        return aVal > bVal ? 1 : (aVal < bVal ? -1 : 0);
+                    }
                 }
             });
 
@@ -1352,17 +1401,25 @@
             });
         }
 
-        // Override the original displayRecentStocks to save data and load charts
+        // Store original function and create wrapper that saves data and loads charts
         const originalDisplayRecentStocks = displayRecentStocks;
-        function displayRecentStocks(stocks, days) {
-            currentStocksData = stocks || [];
+        displayRecentStocks = function(stocks, days) {
+            console.log("Wrapper displayRecentStocks called with:", stocks, days);
+            // Store the original data for filtering
+            if (stocks && stocks.length > 0) {
+                currentStocksData = stocks;
+            }
+            
+            // Call the original function
             originalDisplayRecentStocks(stocks, days);
             
             // Load default charts after a brief delay to ensure DOM is ready
             setTimeout(() => {
-                stocks.forEach(stock => {
-                    loadStockChart(stock.symbol, '7d');
-                });
+                if (stocks && stocks.length > 0) {
+                    stocks.forEach(stock => {
+                        loadStockChart(stock.symbol, '7d');
+                    });
+                }
             }, 100);
         }
 
