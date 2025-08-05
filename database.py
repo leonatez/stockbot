@@ -234,6 +234,7 @@ class DatabaseService:
             
             # Insert post mention
             mention_data = {
+                "id": str(uuid.uuid4()),
                 "post_id": post_id,
                 "stock_id": stock_id,
                 "sentiment": sentiment,
@@ -265,7 +266,7 @@ class DatabaseService:
             new_stock = {
                 "id": stock_id,
                 "symbol": symbol,
-                "name": f"{symbol} Company",  # Default name, can be updated later
+                "organ_name": f"{symbol} Company",  # Default name, can be updated later
                 "exchange": "Unknown"  # Simple default, no constraint issues
             }
             
@@ -310,6 +311,7 @@ class DatabaseService:
             else:
                 # Create new daily sentiment
                 daily_sentiment = {
+                    "id": str(uuid.uuid4()),
                     "stock_id": stock_id,
                     "date": post_date.isoformat(),
                     "sentiment": sentiment,
@@ -366,84 +368,82 @@ class DatabaseService:
     async def get_recent_stocks(self, days: int = 3) -> List[Dict[str, Any]]:
         """Get stocks that have been mentioned in the last N days with aggregated data"""
         try:
-            cutoff_date = (datetime.now().date() - timedelta(days=days)).isoformat()
-            
-            # Get stocks with recent activity, aggregated by stock
-            result = self.supabase.rpc('get_recent_stocks_summary', {
-                'days_back': days
-            }).execute()
-            
-            if result.data:
-                return result.data
-            
-            # Fallback: manual aggregation if RPC doesn't exist
+            # Use fallback method that includes detailed post information
             return await self._get_recent_stocks_fallback(days)
             
         except Exception as e:
             print(f"Error fetching recent stocks: {e}")
-            # Try fallback method
-            return await self._get_recent_stocks_fallback(days)
+            return []
 
     async def _get_recent_stocks_fallback(self, days: int) -> List[Dict[str, Any]]:
         """Fallback method to get recent stocks with detailed post information"""
         try:
             cutoff_date = (datetime.now().date() - timedelta(days=days)).isoformat()
             
-            # Get all stocks that have posts in the last N days with detailed information
-            posts_result = self.supabase.table("posts").select("""
-                id, url, summary, created_date,
-                sources(name),
-                post_mentioned_stocks(
-                    sentiment, summary,
-                    stocks(id, symbol, organ_name, exchange, isvn30)
-                )
-            """).gte("created_date", cutoff_date).execute()
+            # Step 1: Get all post mentions with stock info
+            mentions_result = self.supabase.table("post_mentioned_stocks").select(
+                "post_id, sentiment, summary, stocks(id, symbol, organ_name, exchange, isvn30)"
+            ).execute()
+            
+            if not mentions_result.data:
+                return []
+            
+            # Step 2: Get all posts within date range
+            posts_result = self.supabase.table("posts").select(
+                "id, url, summary, created_date, sources(name)"
+            ).gte("created_date", cutoff_date).execute()
             
             if not posts_result.data:
                 return []
             
-            # Aggregate stocks data with detailed post information
+            # Create lookup dict for posts
+            posts_dict = {post["id"]: post for post in posts_result.data}
+            
+            # Step 3: Aggregate stocks data with detailed post information
             stocks_data = {}
             
-            for post in posts_result.data:
-                for mention in post.get("post_mentioned_stocks", []):
-                    stock = mention.get("stocks")
-                    if not stock:
-                        continue
-                        
-                    stock_id = stock["id"]
-                    
-                    if stock_id not in stocks_data:
-                        stocks_data[stock_id] = {
-                            "symbol": stock["symbol"],
-                            "name": stock["organ_name"],
-                            "exchange": stock["exchange"],
-                            "isvn30": stock.get("isvn30", False),
-                            "posts_count": 0,
-                            "sentiments": [],
-                            "last_updated": post["created_date"],
-                            "posts": []  # Store detailed post information
-                        }
-                    
-                    # Add detailed post information
-                    post_info = {
-                        "url": post["url"],
-                        "summary": post["summary"] or "No summary available",
-                        "source_name": post.get("sources", {}).get("name", "Unknown Source") if post.get("sources") else "Unknown Source",
-                        "created_date": post["created_date"],
-                        "sentiment": mention["sentiment"],
-                        "stock_mention_summary": mention.get("summary", "")
+            for mention in mentions_result.data:
+                post_id = mention["post_id"]
+                stock = mention.get("stocks")
+                
+                # Check if post exists and is within date range
+                if post_id not in posts_dict or not stock:
+                    continue
+                
+                post = posts_dict[post_id]
+                stock_id = stock["id"]
+                
+                if stock_id not in stocks_data:
+                    stocks_data[stock_id] = {
+                        "symbol": stock["symbol"],
+                        "name": stock["organ_name"],
+                        "exchange": stock["exchange"],
+                        "isvn30": stock.get("isvn30", False),
+                        "posts_count": 0,
+                        "sentiments": [],
+                        "last_updated": post["created_date"],
+                        "posts": []  # Store detailed post information
                     }
-                    
-                    stocks_data[stock_id]["posts"].append(post_info)
-                    stocks_data[stock_id]["posts_count"] += 1
-                    stocks_data[stock_id]["sentiments"].append(mention["sentiment"])
-                    
-                    # Keep the most recent date
-                    if post["created_date"] > stocks_data[stock_id]["last_updated"]:
-                        stocks_data[stock_id]["last_updated"] = post["created_date"]
+                
+                # Add detailed post information
+                post_info = {
+                    "url": post["url"],
+                    "summary": post["summary"] or "No summary available",
+                    "source_name": post.get("sources", {}).get("name", "Unknown Source") if post.get("sources") else "Unknown Source",
+                    "created_date": post["created_date"],
+                    "sentiment": mention["sentiment"],
+                    "stock_mention_summary": mention.get("summary", "")
+                }
+                
+                stocks_data[stock_id]["posts"].append(post_info)
+                stocks_data[stock_id]["posts_count"] += 1
+                stocks_data[stock_id]["sentiments"].append(mention["sentiment"])
+                
+                # Keep the most recent date
+                if post["created_date"] > stocks_data[stock_id]["last_updated"]:
+                    stocks_data[stock_id]["last_updated"] = post["created_date"]
             
-            # Calculate overall sentiment and get latest daily sentiment
+            # Step 4: Calculate overall sentiment and get latest daily sentiment
             result = []
             for stock_id, stock_data in stocks_data.items():
                 sentiments = stock_data["sentiments"]
@@ -480,6 +480,8 @@ class DatabaseService:
             
         except Exception as e:
             print(f"Error in fallback recent stocks query: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     async def _get_latest_daily_sentiment_summary(self, stock_id: str) -> str:

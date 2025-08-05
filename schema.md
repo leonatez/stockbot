@@ -25,17 +25,19 @@ Purpose: Master registry of Vietnamese stocks
 
 id (UUID, Primary Key): Unique identifier
 symbol (TEXT, UNIQUE): Stock ticker symbol
-name (TEXT): Company full name
+organ_name (TEXT): Official company full name
 exchange (TEXT): Trading exchange (HOSE, HNX, or UPCOM)
-industry_id (UUID): Foreign key to industries table
-sector (TEXT): Additional sector classification
-listed_date (DATE): Stock listing date
 description (TEXT): Company description
-issue_share (BIGINT): Number of issued shares
-charter_capital (DECIMAL): Company charter capital
+created_at (TIMESTAMP WITH TIME ZONE): Creation timestamp
+organ_short_name (TEXT): Short company name
 isvn30 (BOOLEAN): Whether stock is in VN30 index
-organ_name (TEXT): Official company name
-created_at, updated_at (TIMESTAMP): Record creation and modification times
+icb_name1 (TEXT): ICB sector classification level 1
+icb_name2 (TEXT): ICB sector classification level 2
+icb_name3 (TEXT): ICB sector classification level 3
+icb_name4 (TEXT): ICB sector classification level 4
+charter_capital (NUMERIC): Company charter capital
+issue_share (BIGINT): Number of issued shares
+updated_at (TIMESTAMP WITH TIME ZONE): Record modification time
 
 4. Posts Table
 Purpose: Stores scraped news articles and content
@@ -47,74 +49,102 @@ type (TEXT): Content category - 'Company', 'Industry', or 'Macro'
 created_date (DATE): Publication date of the content
 content (TEXT): Full article content
 summary (TEXT): Article summary
+created_at (TIMESTAMP WITH TIME ZONE): Record creation timestamp
 
 5. Post Mentioned Stocks Table
 Purpose: Links posts to stocks they mention with sentiment analysis
 
+id (UUID, Primary Key): Unique identifier
 post_id (UUID): Foreign key to posts table
 stock_id (UUID): Foreign key to stocks table
 sentiment (TEXT): Sentiment classification ('positive', 'neutral', 'negative')
 summary (TEXT): Context of how the stock was mentioned
+created_at (TIMESTAMP WITH TIME ZONE): Record creation timestamp
 
 6. Post Mentioned Industries Table
 Purpose: Links posts to industries they discuss with sentiment analysis
 
+id (UUID, Primary Key): Unique identifier
 post_id (UUID): Foreign key to posts table
 industry_id (UUID): Foreign key to industries table
 sentiment (TEXT): Sentiment classification ('positive', 'neutral', 'negative')
 summary (TEXT): Context of industry mention
+created_at (TIMESTAMP WITH TIME ZONE): Record creation timestamp
 
 7. Stock Daily Sentiment Table
 Purpose: Aggregated daily sentiment scores for each stock
 
+id (UUID, Primary Key): Unique identifier
 stock_id (UUID): Foreign key to stocks table
 date (DATE): Date of sentiment aggregation
 sentiment (TEXT): Overall daily sentiment
 summary (TEXT): Summary of sentiment drivers
 post_ids (JSONB): Array of post IDs contributing to sentiment
 signals (JSONB): Trading signals or insights derived from sentiment
+created_at (TIMESTAMP WITH TIME ZONE): Record creation timestamp
 Unique constraint: (stock_id, date) - one record per stock per day
 
 8. Stock Prices Table
 Purpose: Daily OHLCV price data for stocks
 
+id (UUID, Primary Key): Unique identifier
 stock_id (UUID): Foreign key to stocks table
 date (DATE): Trading date
-open, high, low, close (DECIMAL): Price points
+open (NUMERIC): Opening price
+high (NUMERIC): Highest price
+low (NUMERIC): Lowest price
+close (NUMERIC): Closing price
 volume (BIGINT): Trading volume
+created_at (TIMESTAMP WITH TIME ZONE): Record creation timestamp
 Unique constraint: (stock_id, date) - one record per stock per day
 
 9. Stock Ticks Table
 Purpose: High-frequency tick-by-tick trading data
 
+id (UUID, Primary Key): Unique identifier
 stock_id (UUID): Foreign key to stocks table
 time (TIMESTAMP WITH TIME ZONE): Exact timestamp of trade
-price (DECIMAL): Trade price
+price (NUMERIC): Trade price
 volume (BIGINT): Trade volume
 match_type (TEXT): Type of trade execution
+created_at (TIMESTAMP WITH TIME ZONE): Record creation timestamp
 
 10. Stock Events Table
 Purpose: Corporate events and announcements
 
+id (UUID, Primary Key): Unique identifier
 stock_id (UUID): Foreign key to stocks table
-event_title, en__event_title (TEXT): Event titles in Vietnamese and English
-public_date, issue_date (DATE): Event announcement and issue dates
+event_title (TEXT): Event title in Vietnamese
+en__event_title (TEXT): Event title in English (note: double underscore)
+public_date (DATE): Event announcement date
+issue_date (DATE): Event issue date
 source_url (TEXT): Link to official announcement
 event_list_code (TEXT): Event classification code
-ratio, value (TEXT): Event parameters (dividends, splits, etc.)
-record_date, exright_date (DATE): Important dates for shareholders
-event_list_name, en__event_list_name (TEXT): Event type names
+ratio (TEXT): Event ratio parameters
+value (TEXT): Event value parameters
+record_date (DATE): Record date for shareholders
+exright_date (DATE): Ex-rights date
+event_list_name (TEXT): Event type name in Vietnamese
+en__event_list_name (TEXT): Event type name in English (note: double underscore)
+created_at (TIMESTAMP WITH TIME ZONE): Record creation timestamp
+description (TEXT): Additional event description
+event_type (TEXT): Type classification of the event
+event_name (TEXT): Alternative event name field
+event_date (DATE): Primary event date
+ex_date (DATE): Ex-dividend/rights date
+place (TEXT): Location or venue for the event
 
 11. Stock Dividends Table
 Purpose: Tracks company dividend payments and distributions
 
-id (SERIAL, Primary Key): Unique identifier
+id (INTEGER, Primary Key): Unique identifier (auto-incrementing)
 stock_id (UUID): Foreign key to stocks table
 exercise_date (DATE): Date when dividend is exercised/paid
 cash_year (INTEGER): Year of the dividend payment
-cash_dividend_percentage (DECIMAL): Dividend percentage rate
+cash_dividend_percentage (NUMERIC): Dividend percentage rate
 issue_method (TEXT): Method of dividend issuance
-created_at, updated_at (TIMESTAMP): Record creation and modification times
+created_at (TIMESTAMP WITH TIME ZONE): Record creation timestamp
+updated_at (TIMESTAMP WITH TIME ZONE): Record modification timestamp
 Unique constraint: (stock_id, exercise_date, cash_year) - prevents duplicate dividend records
 
 Key Data Flow Patterns

@@ -1611,6 +1611,152 @@ async def root():
     with open("static/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
+@app.get("/vnindex-data")
+async def get_vnindex_data(period: str = "1M"):
+    """
+    Get VNINDEX data using vnstock for charting.
+    
+    Args:
+        period: Time period - "1M", "3M", "6M", "1Y"
+    
+    Returns:
+        JSON with VNINDEX price data for Chart.js
+    """
+    try:
+        from vnstock import Vnstock
+        from datetime import timedelta
+        
+        # Map frontend periods to date ranges
+        today = datetime.now().date()
+        period_mapping = {
+            "1M": today - timedelta(days=30),
+            "3M": today - timedelta(days=90), 
+            "6M": today - timedelta(days=180),
+            "1Y": today - timedelta(days=365)
+        }
+        
+        start_date = period_mapping.get(period, today - timedelta(days=30))
+        
+        print(f"Fetching VNINDEX data for period: {period} from {start_date} to {today}")
+        
+        # Get VNINDEX data using vnstock - using VNINDEX as a stock symbol
+        stock = Vnstock().stock(symbol='VNINDEX', source='VCI')
+        data = stock.quote.history(start=start_date.strftime('%Y-%m-%d'), end=today.strftime('%Y-%m-%d'), interval='1D')
+        
+        if data is None or data.empty:
+            # Try alternative approach with a major stock as proxy
+            print("VNINDEX direct query failed, trying VIC as market proxy")
+            stock = Vnstock().stock(symbol='VIC', source='VCI')
+            data = stock.quote.history(start=start_date.strftime('%Y-%m-%d'), end=today.strftime('%Y-%m-%d'), interval='1D')
+            
+            if data is None or data.empty:
+                return JSONResponse(
+                    status_code=404,
+                    content={"error": "No market data available for the requested period"}
+                )
+        
+        # Reset index to access data properly
+        data = data.reset_index()
+        
+        # Sort by date (oldest first for chart)  
+        data = data.sort_values('time')
+        
+        # Format data for Chart.js
+        chart_data = {
+            "labels": data['time'].dt.strftime('%m-%d').tolist(),
+            "datasets": [{
+                "label": "Market Index",
+                "data": data['close'].tolist(),
+                "borderColor": "#2F80ED",
+                "backgroundColor": "rgba(47, 128, 237, 0.1)",
+                "borderWidth": 2,
+                "fill": True,
+                "tension": 0.4,
+                "pointRadius": 0,
+                "pointHoverRadius": 4
+            }]
+        }
+        
+        # Calculate price change
+        latest_price = float(data['close'].iloc[-1])
+        previous_price = float(data['close'].iloc[-2]) if len(data) > 1 else latest_price
+        price_change = latest_price - previous_price
+        price_change_percent = (price_change / previous_price * 100) if previous_price != 0 else 0
+        
+        # Chart configuration optimized for the frontend design
+        chart_config = {
+            "type": "line",
+            "data": chart_data,
+            "options": {
+                "responsive": True,
+                "maintainAspectRatio": False,
+                "interaction": {
+                    "intersect": False,
+                    "mode": 'index'
+                },
+                "scales": {
+                    "y": {
+                        "beginAtZero": False,
+                        "grid": {
+                            "color": "rgba(200, 200, 200, 0.2)"
+                        },
+                        "ticks": {
+                            "color": "#666"
+                        }
+                    },
+                    "x": {
+                        "grid": {
+                            "display": False
+                        },
+                        "ticks": {
+                            "color": "#666",
+                            "maxTicksLimit": 8
+                        }
+                    }
+                },
+                "plugins": {
+                    "legend": {
+                        "display": False
+                    },
+                    "tooltip": {
+                        "backgroundColor": "rgba(0, 0, 0, 0.8)",
+                        "titleColor": "white",
+                        "bodyColor": "white",
+                        "borderColor": "#2F80ED",
+                        "borderWidth": 1
+                    }
+                },
+                "elements": {
+                    "line": {
+                        "tension": 0.4
+                    }
+                }
+            }
+        }
+        
+        return JSONResponse(content={
+            "success": True,
+            "period": period,
+            "chart_config": chart_config,
+            "latest_price": latest_price,
+            "price_change": price_change,
+            "price_change_percent": price_change_percent,
+            "data_points": len(data),
+            "last_updated": data['time'].iloc[-1].isoformat() if len(data) > 0 else None
+        })
+        
+    except ImportError:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "vnstock library not available"}
+        )
+    except Exception as e:
+        print(f"Error fetching VNINDEX data: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to fetch VNINDEX data: {str(e)}"}
+        )
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -1634,6 +1780,84 @@ async def test_date_logic(days: int = 1):
         "would_be_included": would_be_included,
         "fix_working": would_be_included if days == 1 else "N/A"
     }
+
+@app.get("/create-test-data")
+async def create_test_data():
+    """Create test data for demonstrating functionality"""
+    try:
+        # Create mock recent stocks data
+        test_stocks = [
+            {
+                "symbol": "VPB",
+                "name": "Ngân hàng Thương mại Cổ phần Việt Nam Thịnh Vượng",
+                "exchange": "HSX",
+                "sentiment": "positive",
+                "posts_count": 5,
+                "last_updated": "2025-08-05",
+                "summary": "VPB shows strong Q2 results with increased lending growth",
+                "posts": [
+                    {
+                        "url": "http://example.com/vpb-news-1",
+                        "summary": "VPB announces strong Q2 earnings",
+                        "source_name": "Test Source",
+                        "created_date": "2025-08-05",
+                        "sentiment": "positive",
+                        "stock_mention_summary": "Positive outlook for VPB"
+                    }
+                ]
+            },
+            {
+                "symbol": "HPG",
+                "name": "Công ty Cổ phần Tập đoàn Hòa Phát",
+                "exchange": "HSX", 
+                "sentiment": "neutral",
+                "posts_count": 3,
+                "last_updated": "2025-08-04",
+                "summary": "HPG maintains steady performance amid market volatility",
+                "posts": [
+                    {
+                        "url": "http://example.com/hpg-news-1",
+                        "summary": "HPG quarterly update",
+                        "source_name": "Test Source",
+                        "created_date": "2025-08-04", 
+                        "sentiment": "neutral",
+                        "stock_mention_summary": "Stable performance for HPG"
+                    }
+                ]
+            },
+            {
+                "symbol": "ACB",
+                "name": "Ngân hàng Thương mại Cổ phần Á Châu",
+                "exchange": "HSX",
+                "sentiment": "positive", 
+                "posts_count": 4,
+                "last_updated": "2025-08-03",
+                "summary": "ACB digital banking initiatives show promising results",
+                "posts": [
+                    {
+                        "url": "http://example.com/acb-news-1",
+                        "summary": "ACB digital transformation",
+                        "source_name": "Test Source",
+                        "created_date": "2025-08-03",
+                        "sentiment": "positive", 
+                        "stock_mention_summary": "Digital banking growth for ACB"
+                    }
+                ]
+            }
+        ]
+        
+        return JSONResponse(content={
+            "message": "Test data created successfully",
+            "stocks": test_stocks,
+            "count": len(test_stocks),
+            "note": "This is mock data for testing the frontend buttons"
+        })
+        
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to create test data: {str(e)}"}
+        )
 
 if __name__ == "__main__":
     import uvicorn
