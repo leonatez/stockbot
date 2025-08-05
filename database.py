@@ -11,10 +11,10 @@ class DatabaseService:
     def __init__(self):
         """Initialize Supabase client"""
         self.url = os.getenv("SUPABASE_URL")
-        self.key = os.getenv("SERVICE_ROLE_KEY")  # Using service role key for server operations
+        self.key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")  # Using service role key for server operations
         
         if not self.url or not self.key:
-            raise ValueError("SUPABASE_URL and SERVICE_ROLE_KEY must be set in environment variables")
+            raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in environment variables")
         
         self.supabase: Client = create_client(self.url, self.key)
     
