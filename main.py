@@ -1638,5 +1638,18 @@ async def test_date_logic(days: int = 1):
 if __name__ == "__main__":
     import uvicorn
     import os
+    
+    # Get port from environment, default to 8000 for local development
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    
+    print(f"Starting server on host=0.0.0.0, port={port}")
+    print(f"Environment check:")
+    print(f"- SUPABASE_URL: {'SET' if os.getenv('SUPABASE_URL') else 'NOT SET'}")
+    print(f"- SUPABASE_SERVICE_ROLE_KEY: {'SET' if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else 'NOT SET'}")
+    print(f"- GEMINI_API_KEY: {'SET' if os.getenv('GEMINI_API_KEY') else 'NOT SET'}")
+    
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=port)
+    except Exception as e:
+        print(f"Failed to start server: {e}")
+        raise
