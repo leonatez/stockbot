@@ -741,15 +741,9 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const result = await response.json();
                 
-                // If no real data is available, use test data for demonstration
+                // If no real data is available, show empty state
                 if (!result.stocks || result.stocks.length === 0) {
-                    console.log("No real stock data found, loading test data for demonstration");
-                    const testResponse = await fetch('/create-test-data');
-                    if (testResponse.ok) {
-                        const testData = await testResponse.json();
-                        result.stocks = testData.stocks;
-                        console.log("Test data loaded:", result.stocks);
-                    }
+                    console.log("No stock data found");
                 }
                 
                 displayRecentStocks(result.stocks, days);
