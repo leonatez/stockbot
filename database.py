@@ -551,11 +551,11 @@ class DatabaseService:
 
     async def update_company_events(self, stock_symbol: str, events_data: List[Dict[str, Any]]) -> bool:
         """
-        Update stock_events table with company events
+        Update stock_events table with company events from vnstock
         
         Args:
             stock_symbol: Stock symbol (e.g., 'ACB')
-            events_data: List of dictionaries containing event data
+            events_data: List of dictionaries containing event data from vnstock
             
         Returns:
             bool: True if successful, False otherwise
@@ -573,45 +573,66 @@ class DatabaseService:
             # Process each event
             updated_count = 0
             if events_data:
-                print(f"Debug: First event data keys: {list(events_data[0].keys())}")
+                print(f"Processing {len(events_data)} events for {stock_symbol}")
             
             for event in events_data:
                 try:
-                    # Prepare event data for database
+                    # Helper function to parse dates from vnstock
+                    def parse_date(date_str):
+                        if not date_str or str(date_str).lower() == 'nan':
+                            return None
+                        try:
+                            # vnstock returns dates as strings like '2012-05-25'
+                            return datetime.strptime(str(date_str), "%Y-%m-%d").date().isoformat()
+                        except:
+                            return None
+                    
+                    # Helper function to convert vnstock numeric values
+                    def convert_numeric(value):
+                        if not value or str(value).lower() == 'nan':
+                            return None
+                        return str(value)
+                    
+                    # Map vnstock fields to database columns properly
                     db_event = {
+                        "id": str(uuid.uuid4()),  # Generate new UUID
                         "stock_id": stock_id,
-                        "event_type": event.get("event_type", ""),
-                        "event_name": event.get("event_name", ""),
-                        "event_date": event.get("event_date"),
-                        "ex_date": event.get("ex_date"),
-                        "record_date": event.get("record_date"),
-                        "issue_date": event.get("issue_date"),
-                        "ratio": event.get("ratio"),
-                        "value": event.get("value"),
-                        "place": event.get("place", ""),
-                        "description": event.get("description", ""),
+                        # Map vnstock fields directly
+                        "event_title": event.get("event_title"),
+                        "en__event_title": event.get("en__event_title"),
+                        "public_date": parse_date(event.get("public_date")),
+                        "issue_date": parse_date(event.get("issue_date")),
+                        "source_url": event.get("source_url"),
+                        "event_list_code": event.get("event_list_code"),
+                        "ratio": convert_numeric(event.get("ratio")),
+                        "value": convert_numeric(event.get("value")),
+                        "record_date": parse_date(event.get("record_date")),
+                        "exright_date": parse_date(event.get("exright_date")),
+                        "event_list_name": event.get("event_list_name"),
+                        "en__event_list_name": event.get("en__event_list_name"),
+                        # Additional database fields (empty for now)
+                        "description": "",
+                        "event_type": event.get("event_list_code", ""),  # Use code as type
+                        "event_name": event.get("event_title", ""),     # Use title as name
+                        "event_date": parse_date(event.get("issue_date")),  # Use issue_date as primary event date
+                        "ex_date": parse_date(event.get("exright_date")),   # Use exright_date as ex_date
+                        "place": "",
                         "created_at": datetime.now().isoformat()
                     }
                     
-                    # Use upsert to avoid duplicates (if event_name and event_date are unique)
-                    result = self.supabase.table("stock_events").upsert(db_event).execute()
+                    # Insert event (use insert instead of upsert to avoid conflicts)
+                    result = self.supabase.table("stock_events").insert(db_event).execute()
                     
                     if result.data:
                         updated_count += 1
-                        # Try different possible field names for event title
-                        event_title = (event.get('event_name') or 
-                                     event.get('event_title') or 
-                                     event.get('event_list_name') or 
-                                     event.get('en__event_title') or 
-                                     event.get('title') or 
-                                     'Unknown event')
-                        print(f"✓ Event updated for {stock_symbol}: {event_title}")
+                        event_title = event.get('event_title') or event.get('event_list_name') or 'Unknown event'
+                        print(f"✓ Event inserted for {stock_symbol}: {event_title}")
                     
                 except Exception as event_error:
                     print(f"✗ Error processing event for {stock_symbol}: {event_error}")
                     continue
             
-            print(f"✓ Updated {updated_count} events for {stock_symbol}")
+            print(f"✓ Inserted {updated_count} events for {stock_symbol}")
             return updated_count > 0
             
         except Exception as e:
@@ -699,15 +720,15 @@ class DatabaseService:
             stock_data = stock_result.data[0]
             stock_id = stock_data["id"]
             
-            # Get recent events (last 10) - order by created_at since event_date can be None
+            # Get all events - order by event_date DESC (nulls last), then created_at DESC
             events_result = self.supabase.table("stock_events").select(
-                "event_type, event_name, event_date, ex_date, record_date, ratio, value, description"
-            ).eq("stock_id", stock_id).order("created_at", desc=True).limit(10).execute()
+                "event_type, event_name, event_date, ex_date, record_date, ratio, value, description, issue_date, event_title"
+            ).eq("stock_id", stock_id).order("event_date", desc=True, nullsfirst=False).order("created_at", desc=True).execute()
             
-            # Get recent dividends (last 5)
+            # Get all dividends - order by exercise_date DESC
             dividends_result = self.supabase.table("stock_dividends").select(
                 "exercise_date, cash_year, cash_dividend_percentage, issue_method"
-            ).eq("stock_id", stock_id).order("exercise_date", desc=True).limit(5).execute()
+            ).eq("stock_id", stock_id).order("exercise_date", desc=True, nullsfirst=False).execute()
             
             return {
                 "overview": {

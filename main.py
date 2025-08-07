@@ -1493,13 +1493,13 @@ async def get_company_info(symbol: str):
         raise HTTPException(status_code=500, detail=f"Failed to fetch company info: {str(e)}")
 
 @app.get("/stock-prices/{symbol}")
-async def get_stock_prices(symbol: str, period: str = "7d"):
+async def get_stock_prices(symbol: str, period: str = "1m"):
     """
     Get stock price data for charting.
     
     Args:
         symbol: Stock symbol (e.g., ACB, HPG)
-        period: Time period - "7d", "1m", "3m" (7 days, 1 month, 3 months)
+        period: Time period - "1m", "3m", "1y" (1 month, 3 months, 1 year)
     
     Returns:
         JSON with price data and chart configuration
@@ -1509,17 +1509,17 @@ async def get_stock_prices(symbol: str, period: str = "7d"):
         
         # Calculate date range based on period
         today = datetime.now().date()
-        if period == "7d":
-            start_date = (today - timedelta(days=7)).isoformat()
-            period_label = "7 Days"
-        elif period == "1m":
+        if period == "1m":
             start_date = (today - timedelta(days=30)).isoformat()
             period_label = "1 Month"
         elif period == "3m":
             start_date = (today - timedelta(days=90)).isoformat()
             period_label = "3 Months"
+        elif period == "1y":
+            start_date = (today - timedelta(days=365)).isoformat()
+            period_label = "1 Year"
         else:
-            raise HTTPException(status_code=400, detail="Invalid period. Use '7d', '1m', or '3m'")
+            raise HTTPException(status_code=400, detail="Invalid period. Use '1m', '3m', or '1y'")
         
         # Get stock info and price data
         stock_result = db_service.supabase.table("stocks").select("id, symbol, organ_name, exchange, isvn30").eq("symbol", symbol).execute()
@@ -1756,6 +1756,275 @@ async def get_vnindex_data(period: str = "1M"):
             status_code=500,
             content={"error": f"Failed to fetch VNINDEX data: {str(e)}"}
         )
+
+@app.post("/company-events/update")
+async def update_all_company_events():
+    """
+    Delete all stock events and update with fresh data from vnstock for stocks mentioned in last 30 days
+    """
+    try:
+        from vnstock.explorer.vci import Company
+        import uuid
+        
+        print("\n=== Company Events Manual Update Started ===")
+        
+        # Step 1: Get stocks mentioned in last 30 days using existing endpoint logic
+        print("Step 1: Getting stocks mentioned in last 30 days...")
+        recent_stocks = await db_service.get_recent_stocks(days=30)
+        
+        if not recent_stocks:
+            return JSONResponse(content={
+                "success": False,
+                "message": "No stocks found in the last 30 days",
+                "updated_stocks": [],
+                "failed_stocks": []
+            })
+        
+        stock_symbols = [stock["symbol"] for stock in recent_stocks]
+        print(f"Found {len(stock_symbols)} stocks to update: {', '.join(stock_symbols)}")
+        
+        # Step 2: Delete all existing stock events
+        print("Step 2: Deleting all existing stock events...")
+        try:
+            # Get count first
+            count_result = db_service.supabase.table("stock_events").select("id").execute()
+            total_count = len(count_result.data) if count_result.data else 0
+            
+            # Delete all records (use a proper condition)
+            delete_result = db_service.supabase.table("stock_events").delete().not_.is_("id", "null").execute()
+            deleted_count = len(delete_result.data) if delete_result.data else total_count
+            print(f"✓ Deleted {deleted_count} existing stock events")
+        except Exception as delete_error:
+            print(f"✗ Error deleting stock events: {delete_error}")
+            raise HTTPException(status_code=500, detail=f"Failed to delete existing events: {str(delete_error)}")
+        
+        # Step 3: Update events for each stock
+        print("Step 3: Fetching fresh events from vnstock for each stock...")
+        updated_stocks = []
+        failed_stocks = []
+        
+        for stock_symbol in stock_symbols:
+            print(f"\nProcessing {stock_symbol}...")
+            try:
+                # Get events from vnstock
+                company = Company(stock_symbol)
+                events_df = company.events()
+                
+                if events_df is not None and not events_df.empty:
+                    # Convert DataFrame to list of dictionaries
+                    events_data = events_df.to_dict('records')
+                    print(f"✓ Retrieved {len(events_data)} events for {stock_symbol}")
+                    
+                    # Update using the fixed database method
+                    success = await db_service.update_company_events(stock_symbol, events_data)
+                    
+                    if success:
+                        updated_stocks.append({
+                            "symbol": stock_symbol,
+                            "events_count": len(events_data),
+                            "status": "success"
+                        })
+                        print(f"✓ Successfully updated {stock_symbol} with {len(events_data)} events")
+                    else:
+                        failed_stocks.append({
+                            "symbol": stock_symbol,
+                            "error": "Database update failed",
+                            "status": "failed"
+                        })
+                        print(f"✗ Failed to update {stock_symbol} in database")
+                else:
+                    print(f"⚠️ No events found for {stock_symbol}")
+                    updated_stocks.append({
+                        "symbol": stock_symbol,
+                        "events_count": 0,
+                        "status": "no_events"
+                    })
+                    
+            except Exception as stock_error:
+                error_message = str(stock_error)
+                failed_stocks.append({
+                    "symbol": stock_symbol,
+                    "error": error_message,
+                    "status": "failed"
+                })
+                print(f"✗ Error processing {stock_symbol}: {error_message}")
+                continue
+        
+        # Step 4: Summary
+        total_events_added = sum(stock["events_count"] for stock in updated_stocks if "events_count" in stock)
+        
+        print(f"\n=== Company Events Update Summary ===")
+        print(f"Stocks processed: {len(stock_symbols)}")
+        print(f"Successfully updated: {len(updated_stocks)}")
+        print(f"Failed updates: {len(failed_stocks)}")
+        print(f"Total events added: {total_events_added}")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Company events update completed. Updated {len(updated_stocks)} stocks with {total_events_added} total events.",
+            "summary": {
+                "total_stocks_processed": len(stock_symbols),
+                "successful_updates": len(updated_stocks),
+                "failed_updates": len(failed_stocks),
+                "total_events_added": total_events_added,
+                "deleted_old_events": deleted_count
+            },
+            "updated_stocks": updated_stocks,
+            "failed_stocks": failed_stocks,
+            "processed_symbols": stock_symbols
+        })
+        
+    except Exception as e:
+        print(f"Critical error during company events update: {e}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Company events update failed: {str(e)}")
+
+@app.post("/company-dividends/update")
+async def update_all_company_dividends():
+    """
+    Delete all stock dividends and update with fresh data from vnstock for stocks mentioned in last 30 days
+    """
+    try:
+        from vnstock import Vnstock
+        
+        print("\n=== Company Dividends Manual Update Started ===")
+        
+        # Step 1: Get stocks mentioned in last 30 days
+        print("Step 1: Getting stocks mentioned in last 30 days...")
+        recent_stocks = await db_service.get_recent_stocks(days=30)
+        
+        if not recent_stocks:
+            return JSONResponse(content={
+                "success": False,
+                "message": "No stocks found in the last 30 days",
+                "updated_stocks": [],
+                "failed_stocks": []
+            })
+        
+        stock_symbols = [stock["symbol"] for stock in recent_stocks]
+        print(f"Found {len(stock_symbols)} stocks to update dividends: {', '.join(stock_symbols)}")
+        
+        # Step 2: Delete all existing stock dividends
+        print("Step 2: Deleting all existing stock dividends...")
+        try:
+            # Get count first
+            count_result = db_service.supabase.table("stock_dividends").select("id").execute()
+            total_count = len(count_result.data) if count_result.data else 0
+            
+            # Delete all records
+            delete_result = db_service.supabase.table("stock_dividends").delete().not_.is_("id", "null").execute()
+            deleted_count = len(delete_result.data) if delete_result.data else total_count
+            print(f"✓ Deleted {deleted_count} existing stock dividends")
+        except Exception as delete_error:
+            print(f"✗ Error deleting stock dividends: {delete_error}")
+            raise HTTPException(status_code=500, detail=f"Failed to delete existing dividends: {str(delete_error)}")
+        
+        # Step 3: Update dividends for each stock
+        print("Step 3: Fetching fresh dividends from vnstock for each stock...")
+        updated_stocks = []
+        failed_stocks = []
+        
+        for stock_symbol in stock_symbols:
+            print(f"\nProcessing dividends for {stock_symbol}...")
+            try:
+                # Get dividends from vnstock (requires different initiation)
+                company = Vnstock().stock(symbol=stock_symbol, source='TCBS').company
+                dividends_df = company.dividends()
+                
+                if dividends_df is not None and not dividends_df.empty:
+                    # Convert DataFrame to list of dictionaries
+                    dividends_data = dividends_df.to_dict('records')
+                    print(f"✓ Retrieved {len(dividends_data)} dividends for {stock_symbol}")
+                    
+                    # Update using the database method
+                    success = await db_service.update_company_dividends(stock_symbol, dividends_data)
+                    
+                    if success:
+                        updated_stocks.append({
+                            "symbol": stock_symbol,
+                            "dividends_count": len(dividends_data),
+                            "status": "success"
+                        })
+                        print(f"✓ Successfully updated {stock_symbol} with {len(dividends_data)} dividends")
+                    else:
+                        failed_stocks.append({
+                            "symbol": stock_symbol,
+                            "error": "Database update failed",
+                            "status": "failed"
+                        })
+                        print(f"✗ Failed to update {stock_symbol} in database")
+                else:
+                    print(f"⚠️ No dividends found for {stock_symbol}")
+                    updated_stocks.append({
+                        "symbol": stock_symbol,
+                        "dividends_count": 0,
+                        "status": "no_dividends"
+                    })
+                    
+            except Exception as stock_error:
+                error_message = str(stock_error)
+                failed_stocks.append({
+                    "symbol": stock_symbol,
+                    "error": error_message,
+                    "status": "failed"
+                })
+                print(f"✗ Error processing dividends for {stock_symbol}: {error_message}")
+                continue
+        
+        # Step 4: Summary
+        total_dividends_added = sum(stock["dividends_count"] for stock in updated_stocks if "dividends_count" in stock)
+        
+        print(f"\n=== Company Dividends Update Summary ===")
+        print(f"Stocks processed: {len(stock_symbols)}")
+        print(f"Successfully updated: {len(updated_stocks)}")
+        print(f"Failed updates: {len(failed_stocks)}")
+        print(f"Total dividends added: {total_dividends_added}")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Company dividends update completed. Updated {len(updated_stocks)} stocks with {total_dividends_added} total dividends.",
+            "summary": {
+                "total_stocks_processed": len(stock_symbols),
+                "successful_updates": len(updated_stocks),
+                "failed_updates": len(failed_stocks),
+                "total_dividends_added": total_dividends_added,
+                "deleted_old_dividends": deleted_count
+            },
+            "updated_stocks": updated_stocks,
+            "failed_stocks": failed_stocks,
+            "processed_symbols": stock_symbols
+        })
+        
+    except Exception as e:
+        print(f"Critical error during company dividends update: {e}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Company dividends update failed: {str(e)}")
+
+@app.get("/company-update", response_class=HTMLResponse)
+async def company_update_page():
+    """Company Update page for manual data updates"""
+    try:
+        with open("static/company-update.html", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        # Return a simple HTML if file doesn't exist yet
+        return """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Company Update - Vietnamese Stock Analysis</title>
+        </head>
+        <body>
+            <h1>Company Update Page</h1>
+            <p>Company Update page is being developed. Please check back later.</p>
+            <a href="/">← Back to Home</a>
+        </body>
+        </html>
+        """
 
 @app.get("/health")
 async def health_check():

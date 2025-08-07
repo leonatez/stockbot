@@ -111,6 +111,12 @@
                         <span>Analyze</span>
                     </a>
                 </li>
+                <li>
+                    <a href="#" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium" data-page="company-update">
+                        <i class="fas fa-building text-lg"></i>
+                        <span>Company Update</span>
+                    </a>
+                </li>
             </ul>
         </nav>
         
@@ -460,6 +466,113 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Company Update Page -->
+            <div id="companyUpdatePage" class="page-content hidden">
+                <!-- Manual Company Events Update Section -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-xl flex items-center justify-center">
+                            <i class="fas fa-calendar-alt text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-dark">Manual Company Events Update</h3>
+                            <p class="text-gray-500">Update stock events data with fresh information from vnstock</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                        <p class="text-gray-700 leading-relaxed">
+                            This tool will delete all current stock events data and fetch fresh event information from vnstock for all stocks mentioned in the last 30 days. Company events include dividends, stock splits, shareholder meetings, and other corporate actions.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>
+                            <div>
+                                <p class="font-semibold text-amber-800 mb-1">Important Warning</p>
+                                <p class="text-amber-700 text-sm">This action will permanently delete all existing stock events data and replace it with fresh data from vnstock. This process may take several minutes depending on the number of stocks to update.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="updateCompanyEventsBtn" class="bg-gradient-to-r from-primary to-secondary hover:from-blue-600 hover:to-indigo-600 text-white px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i id="updateEventsIcon" class="fas fa-sync-alt mr-3"></i>
+                        <span id="updateEventsText">Update Company Events</span>
+                    </button>
+                    
+                    <!-- Progress Section -->
+                    <div id="eventsProgressSection" class="hidden mt-8 p-6 bg-gray-50 rounded-lg">
+                        <div class="text-center mb-4">
+                            <div id="eventsProgressText" class="text-lg font-medium text-gray-800 mb-2">Initializing...</div>
+                            <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                                <div id="eventsProgressBar" class="bg-gradient-to-r from-primary to-secondary h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <div id="eventsProgressDetails" class="text-sm text-gray-600"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Results Section -->
+                    <div id="eventsResultsSection" class="hidden mt-8">
+                        <h4 class="text-xl font-bold text-dark mb-4">Update Results</h4>
+                        <div id="eventsStatsSection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                        <div id="eventsResultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    </div>
+                </div>
+                
+                <!-- Manual Company Dividends Update Section -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mt-6">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-coins text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-dark">Manual Company Dividends Update</h3>
+                            <p class="text-gray-500">Update stock dividends data with fresh information from vnstock</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                        <p class="text-gray-700 leading-relaxed">
+                            This tool will delete all current stock dividends data and fetch fresh dividend information from vnstock for all stocks mentioned in the last 30 days. Dividend data includes cash dividend percentages, exercise dates, and issue methods.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>
+                            <div>
+                                <p class="font-semibold text-amber-800 mb-1">Important Warning</p>
+                                <p class="text-amber-700 text-sm">This action will permanently delete all existing stock dividends data and replace it with fresh data from vnstock. This process may take several minutes depending on the number of stocks to update.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="updateCompanyDividendsBtn" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i id="updateDividendsIcon" class="fas fa-sync-alt mr-3"></i>
+                        <span id="updateDividendsText">Update Company Dividends</span>
+                    </button>
+                    
+                    <!-- Progress Section -->
+                    <div id="dividendsProgressSection" class="hidden mt-8 p-6 bg-gray-50 rounded-lg">
+                        <div class="text-center mb-4">
+                            <div id="dividendsProgressText" class="text-lg font-medium text-gray-800 mb-2">Initializing...</div>
+                            <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                                <div id="dividendsProgressBar" class="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <div id="dividendsProgressDetails" class="text-sm text-gray-600"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Results Section -->
+                    <div id="dividendsResultsSection" class="hidden mt-8">
+                        <h4 class="text-xl font-bold text-dark mb-4">Update Results</h4>
+                        <div id="dividendsStatsSection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                        <div id="dividendsResultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -495,6 +608,7 @@
         // Pages
         const newsPage = document.getElementById("newsPage");
         const analyzePage = document.getElementById("analyzePage");
+        const companyUpdatePage = document.getElementById("companyUpdatePage");
         
         // Form elements
         const addNewPageBtn = document.getElementById("addNewPageBtn");
@@ -563,6 +677,10 @@
                 analyzePage.classList.remove("hidden");
                 pageTitle.textContent = "Stock Analysis";
                 pageSubtitle.textContent = "Configure sources and analyze stock mentions";
+            } else if (page === "company-update") {
+                companyUpdatePage.classList.remove("hidden");
+                pageTitle.textContent = "Company Update";
+                pageSubtitle.textContent = "Manual update tools for company information and events data";
             }
         }
 
@@ -574,12 +692,395 @@
         refreshStocksBtn.addEventListener("click", loadRecentStocks);
         dashboardDays.addEventListener("change", loadRecentStocks);
 
+        // Company Update functionality
+        function setupCompanyUpdateEventListeners() {
+            const updateEventsBtn = document.getElementById('updateCompanyEventsBtn');
+            if (updateEventsBtn) {
+                updateEventsBtn.addEventListener('click', updateCompanyEvents);
+            }
+            
+            const updateDividendsBtn = document.getElementById('updateCompanyDividendsBtn');
+            if (updateDividendsBtn) {
+                updateDividendsBtn.addEventListener('click', updateCompanyDividends);
+            }
+        }
+        
+        async function updateCompanyEvents() {
+            const button = document.getElementById('updateCompanyEventsBtn');
+            const icon = document.getElementById('updateEventsIcon');
+            const text = document.getElementById('updateEventsText');
+            const progressSection = document.getElementById('eventsProgressSection');
+            const resultsSection = document.getElementById('eventsResultsSection');
+            const progressBar = document.getElementById('eventsProgressBar');
+            const progressText = document.getElementById('eventsProgressText');
+            const progressDetails = document.getElementById('eventsProgressDetails');
+            
+            // Reset UI
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin mr-3';
+            text.textContent = 'Updating...';
+            progressSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+            progressBar.style.width = '0%';
+            
+            try {
+                // Step 1: Get recent stocks count
+                progressText.textContent = 'Getting stocks mentioned in last 30 days...';
+                progressBar.style.width = '10%';
+                
+                const recentStocksResponse = await fetch('/recent-stocks?days=30');
+                const recentStocksData = await recentStocksResponse.json();
+                const stockCount = recentStocksData.count || 0;
+                
+                progressDetails.textContent = `Found ${stockCount} stocks to update`;
+                progressBar.style.width = '20%';
+                
+                if (stockCount === 0) {
+                    throw new Error('No stocks found in the last 30 days');
+                }
+                
+                // Step 2: Start the update process
+                progressText.textContent = 'Starting company events update...';
+                progressBar.style.width = '30%';
+                
+                const updateResponse = await fetch('/company-events/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    throw new Error(errorData.detail || 'Update failed');
+                }
+                
+                progressText.textContent = 'Processing update results...';
+                progressBar.style.width = '90%';
+                
+                const resultData = await updateResponse.json();
+                
+                // Step 3: Display results
+                progressText.textContent = 'Update completed!';
+                progressBar.style.width = '100%';
+                
+                setTimeout(() => {
+                    displayCompanyUpdateResults(resultData);
+                    progressSection.classList.add('hidden');
+                    resultsSection.classList.remove('hidden');
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Update error:', error);
+                progressText.textContent = 'Update failed';
+                progressDetails.textContent = `Error: ${error.message}`;
+                progressBar.style.width = '0%';
+                
+                // Show error in results
+                setTimeout(() => {
+                    displayCompanyUpdateError(error.message);
+                    resultsSection.classList.remove('hidden');
+                }, 1000);
+            } finally {
+                // Reset button
+                setTimeout(() => {
+                    button.disabled = false;
+                    icon.className = 'fas fa-sync-alt mr-3';
+                    text.textContent = 'Update Company Events';
+                }, 2000);
+            }
+        }
+        
+        function displayCompanyUpdateResults(data) {
+            const statsSection = document.getElementById('eventsStatsSection');
+            const resultsGrid = document.getElementById('eventsResultsGrid');
+            
+            // Display stats summary
+            if (data.summary) {
+                const summary = data.summary;
+                statsSection.innerHTML = `
+                    <div class="text-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                        <div class="text-2xl font-bold text-primary">${summary.total_stocks_processed}</div>
+                        <div class="text-sm text-gray-600">Total Stocks</div>
+                    </div>
+                    <div class="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
+                        <div class="text-2xl font-bold text-green-600">${summary.successful_updates}</div>
+                        <div class="text-sm text-gray-600">Successful</div>
+                    </div>
+                    <div class="text-center p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-lg">
+                        <div class="text-2xl font-bold text-red-600">${summary.failed_updates}</div>
+                        <div class="text-sm text-gray-600">Failed</div>
+                    </div>
+                    <div class="text-center p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg">
+                        <div class="text-2xl font-bold text-purple-600">${summary.total_events_added}</div>
+                        <div class="text-sm text-gray-600">Events Added</div>
+                    </div>
+                `;
+            }
+            
+            // Display individual stock results
+            let resultsHTML = '';
+            
+            // Successful updates
+            if (data.updated_stocks && data.updated_stocks.length > 0) {
+                data.updated_stocks.forEach(stock => {
+                    const isSuccess = stock.events_count > 0;
+                    const bgColor = isSuccess ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200';
+                    const textColor = isSuccess ? 'text-green-800' : 'text-yellow-800';
+                    const iconColor = isSuccess ? 'text-green-600' : 'text-yellow-600';
+                    const icon = isSuccess ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+                    const statusText = isSuccess ? `${stock.events_count} events added` : 'No events found';
+                    
+                    resultsHTML += `
+                        <div class="p-4 ${bgColor} border rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <i class="${icon} ${iconColor}"></i>
+                                <div>
+                                    <div class="font-semibold ${textColor}">${stock.symbol}</div>
+                                    <div class="text-sm text-gray-600">${statusText}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Failed updates
+            if (data.failed_stocks && data.failed_stocks.length > 0) {
+                data.failed_stocks.forEach(stock => {
+                    resultsHTML += `
+                        <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-times-circle text-red-600"></i>
+                                <div>
+                                    <div class="font-semibold text-red-800">${stock.symbol}</div>
+                                    <div class="text-sm text-gray-600">Error: ${stock.error}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            resultsGrid.innerHTML = resultsHTML;
+        }
+        
+        function displayCompanyUpdateError(errorMessage) {
+            const statsSection = document.getElementById('eventsStatsSection');
+            const resultsGrid = document.getElementById('eventsResultsGrid');
+            
+            statsSection.innerHTML = `
+                <div class="col-span-full text-center p-6 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="text-4xl text-red-500 mb-2">❌</div>
+                    <div class="font-semibold text-red-800">Update Failed</div>
+                </div>
+            `;
+            
+            resultsGrid.innerHTML = `
+                <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-lg mt-0.5"></i>
+                        <div>
+                            <div class="font-semibold text-red-800">Update Error</div>
+                            <div class="text-sm text-gray-600 mt-1">${errorMessage}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Dividends update functionality
+        async function updateCompanyDividends() {
+            const button = document.getElementById('updateCompanyDividendsBtn');
+            const icon = document.getElementById('updateDividendsIcon');
+            const text = document.getElementById('updateDividendsText');
+            const progressSection = document.getElementById('dividendsProgressSection');
+            const resultsSection = document.getElementById('dividendsResultsSection');
+            const progressBar = document.getElementById('dividendsProgressBar');
+            const progressText = document.getElementById('dividendsProgressText');
+            const progressDetails = document.getElementById('dividendsProgressDetails');
+            
+            // Reset UI
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin mr-3';
+            text.textContent = 'Updating...';
+            progressSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+            progressBar.style.width = '0%';
+            
+            try {
+                // Step 1: Get recent stocks count
+                progressText.textContent = 'Getting stocks mentioned in last 30 days...';
+                progressBar.style.width = '10%';
+                
+                const recentStocksResponse = await fetch('/recent-stocks?days=30');
+                const recentStocksData = await recentStocksResponse.json();
+                const stockCount = recentStocksData.count || 0;
+                
+                progressDetails.textContent = `Found ${stockCount} stocks to update`;
+                progressBar.style.width = '20%';
+                
+                if (stockCount === 0) {
+                    throw new Error('No stocks found in the last 30 days');
+                }
+                
+                // Step 2: Start the update process
+                progressText.textContent = 'Starting company dividends update...';
+                progressBar.style.width = '30%';
+                
+                const updateResponse = await fetch('/company-dividends/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    throw new Error(errorData.detail || 'Update failed');
+                }
+                
+                progressText.textContent = 'Processing update results...';
+                progressBar.style.width = '90%';
+                
+                const resultData = await updateResponse.json();
+                
+                // Step 3: Display results
+                progressText.textContent = 'Update completed!';
+                progressBar.style.width = '100%';
+                
+                setTimeout(() => {
+                    displayCompanyDividendsResults(resultData);
+                    progressSection.classList.add('hidden');
+                    resultsSection.classList.remove('hidden');
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Dividends update error:', error);
+                progressText.textContent = 'Update failed';
+                progressDetails.textContent = `Error: ${error.message}`;
+                progressBar.style.width = '0%';
+                
+                // Show error in results
+                setTimeout(() => {
+                    displayCompanyDividendsError(error.message);
+                    resultsSection.classList.remove('hidden');
+                }, 1000);
+            } finally {
+                // Reset button
+                setTimeout(() => {
+                    button.disabled = false;
+                    icon.className = 'fas fa-sync-alt mr-3';
+                    text.textContent = 'Update Company Dividends';
+                }, 2000);
+            }
+        }
+        
+        function displayCompanyDividendsResults(data) {
+            const statsSection = document.getElementById('dividendsStatsSection');
+            const resultsGrid = document.getElementById('dividendsResultsGrid');
+            
+            // Display stats summary
+            if (data.summary) {
+                const summary = data.summary;
+                statsSection.innerHTML = `
+                    <div class="text-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                        <div class="text-2xl font-bold text-primary">${summary.total_stocks_processed}</div>
+                        <div class="text-sm text-gray-600">Total Stocks</div>
+                    </div>
+                    <div class="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
+                        <div class="text-2xl font-bold text-green-600">${summary.successful_updates}</div>
+                        <div class="text-sm text-gray-600">Successful</div>
+                    </div>
+                    <div class="text-center p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-lg">
+                        <div class="text-2xl font-bold text-red-600">${summary.failed_updates}</div>
+                        <div class="text-sm text-gray-600">Failed</div>
+                    </div>
+                    <div class="text-center p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg">
+                        <div class="text-2xl font-bold text-purple-600">${summary.total_dividends_added}</div>
+                        <div class="text-sm text-gray-600">Dividends Added</div>
+                    </div>
+                `;
+            }
+            
+            // Display individual stock results
+            let resultsHTML = '';
+            
+            // Successful updates
+            if (data.updated_stocks && data.updated_stocks.length > 0) {
+                data.updated_stocks.forEach(stock => {
+                    const isSuccess = stock.dividends_count > 0;
+                    const bgColor = isSuccess ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200';
+                    const textColor = isSuccess ? 'text-green-800' : 'text-yellow-800';
+                    const iconColor = isSuccess ? 'text-green-600' : 'text-yellow-600';
+                    const icon = isSuccess ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+                    const statusText = isSuccess ? `${stock.dividends_count} dividends added` : 'No dividends found';
+                    
+                    resultsHTML += `
+                        <div class="p-4 ${bgColor} border rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <i class="${icon} ${iconColor}"></i>
+                                <div>
+                                    <div class="font-semibold ${textColor}">${stock.symbol}</div>
+                                    <div class="text-sm text-gray-600">${statusText}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Failed updates
+            if (data.failed_stocks && data.failed_stocks.length > 0) {
+                data.failed_stocks.forEach(stock => {
+                    resultsHTML += `
+                        <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-times-circle text-red-600"></i>
+                                <div>
+                                    <div class="font-semibold text-red-800">${stock.symbol}</div>
+                                    <div class="text-sm text-gray-600">Error: ${stock.error}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            resultsGrid.innerHTML = resultsHTML;
+        }
+        
+        function displayCompanyDividendsError(errorMessage) {
+            const statsSection = document.getElementById('dividendsStatsSection');
+            const resultsGrid = document.getElementById('dividendsResultsGrid');
+            
+            statsSection.innerHTML = `
+                <div class="col-span-full text-center p-6 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="text-4xl text-red-500 mb-2">❌</div>
+                    <div class="font-semibold text-red-800">Update Failed</div>
+                </div>
+            `;
+            
+            resultsGrid.innerHTML = `
+                <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-lg mt-0.5"></i>
+                        <div>
+                            <div class="font-semibold text-red-800">Update Error</div>
+                            <div class="text-sm text-gray-600 mt-1">${errorMessage}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         // Load data on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadSourcesFromDatabase();
             loadRecentStocks();
             loadVNIndexChart();
             setupEventListeners();
+            setupCompanyUpdateEventListeners();
             
             // Set up company info and price chart button handlers (using event delegation)
             document.addEventListener('click', function(e) {
@@ -865,7 +1366,7 @@
                                     <button class="load-company-info-btn text-primary hover:text-blue-600 font-medium" data-symbol="${stock.symbol}">
                                         <i class="fas fa-info-circle mr-1"></i>Company Info
                                     </button>
-                                    <button class="chart-period-btn text-primary hover:text-blue-600 font-medium" data-period="7d" data-symbol="${stock.symbol}">
+                                    <button class="chart-period-btn text-primary hover:text-blue-600 font-medium" data-period="1m" data-symbol="${stock.symbol}">
                                         <i class="fas fa-chart-area mr-1"></i>Price Chart
                                     </button>
                                 </div>
@@ -1199,7 +1700,7 @@
         }
         
         // Price chart functionality
-        async function showPriceChart(symbol, period = '7d') {
+        async function showPriceChart(symbol, period = '1m') {
             try {
                 console.log(`Loading price chart for ${symbol} (${period})`);
                 showToast(`Loading price chart for ${symbol}...`, 'info');
@@ -1212,7 +1713,7 @@
                 }
                 
                 // Display price chart in a modal
-                showPriceChartModal(symbol, result);
+                showPriceChartModal(symbol, result, period);
                 showToast(`Price chart loaded successfully!`, 'success');
                 
             } catch (error) {
@@ -1283,9 +1784,27 @@
             document.body.appendChild(modal);
         }
         
-        function showPriceChartModal(symbol, chartData) {
+        function showPriceChartModal(symbol, chartData, currentPeriod = '1m') {
+            let currentChart = null; // Store the current chart instance
+            
             const modal = createModal(`${symbol} - Price Chart (${chartData.period})`, `
                 <div class="space-y-4">
+                    <!-- Period Selection -->
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-semibold text-gray-800">Select Period</h4>
+                        <div class="flex rounded-lg border border-gray-200 overflow-hidden">
+                            <button class="period-selector-btn px-4 py-2 text-sm font-medium transition-colors ${currentPeriod === '1m' ? 'bg-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}" data-period="1m" data-symbol="${symbol}">
+                                1 Month
+                            </button>
+                            <button class="period-selector-btn px-4 py-2 text-sm font-medium border-l border-gray-200 transition-colors ${currentPeriod === '3m' ? 'bg-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}" data-period="3m" data-symbol="${symbol}">
+                                3 Months
+                            </button>
+                            <button class="period-selector-btn px-4 py-2 text-sm font-medium border-l border-gray-200 transition-colors ${currentPeriod === '1y' ? 'bg-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}" data-period="1y" data-symbol="${symbol}">
+                                1 Year
+                            </button>
+                        </div>
+                    </div>
+                    
                     <!-- Price Stats -->
                     <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                         <div>
@@ -1298,8 +1817,14 @@
                         </div>
                     </div>
                     
+                    <!-- Loading Indicator -->
+                    <div id="chartLoadingIndicator" class="hidden text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-2xl text-primary mb-2"></i>
+                        <div class="text-gray-600">Loading chart data...</div>
+                    </div>
+                    
                     <!-- Chart Container -->
-                    <div class="relative h-80">
+                    <div id="chartContainer" class="relative h-80">
                         <canvas id="modalPriceChart" class="w-full h-full"></canvas>
                     </div>
                 </div>
@@ -1307,13 +1832,92 @@
             
             document.body.appendChild(modal);
             
-            // Create chart after modal is added to DOM
+            // Set up period selector event listeners
+            modal.querySelectorAll('.period-selector-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const newPeriod = btn.dataset.period;
+                    const symbol = btn.dataset.symbol;
+                    
+                    // Update button states
+                    modal.querySelectorAll('.period-selector-btn').forEach(b => {
+                        b.classList.remove('bg-primary', 'text-white');
+                        b.classList.add('bg-white', 'text-gray-700', 'hover:bg-gray-50');
+                    });
+                    btn.classList.remove('bg-white', 'text-gray-700', 'hover:bg-gray-50');
+                    btn.classList.add('bg-primary', 'text-white');
+                    
+                    // Show loading and hide chart
+                    const loadingIndicator = modal.querySelector('#chartLoadingIndicator');
+                    const chartContainer = modal.querySelector('#chartContainer');
+                    loadingIndicator.classList.remove('hidden');
+                    chartContainer.classList.add('hidden');
+                    
+                    try {
+                        // Fetch new data
+                        const response = await fetch(`/stock-prices/${symbol}?period=${newPeriod}`);
+                        const result = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(result.message || 'Failed to load price data');
+                        }
+                        
+                        // Update modal title
+                        const titleElement = modal.querySelector('.modal-title');
+                        if (titleElement) {
+                            titleElement.textContent = `${symbol} - Price Chart (${result.period})`;
+                        }
+                        
+                        // Update stats
+                        const statsElements = modal.querySelectorAll('.grid .text-lg.font-semibold');
+                        if (statsElements[0]) statsElements[0].textContent = result.data_points || 0;
+                        if (statsElements[1]) statsElements[1].textContent = result.period;
+                        
+                        // Create new chart
+                        const canvas = modal.querySelector('#modalPriceChart');
+                        if (canvas && result.chart_config) {
+                            // Destroy existing chart if it exists
+                            if (currentChart) {
+                                currentChart.destroy();
+                                currentChart = null;
+                            }
+                            
+                            // Create new chart instance
+                            const ctx = canvas.getContext('2d');
+                            currentChart = new Chart(ctx, result.chart_config);
+                        }
+                        
+                        // Show chart and hide loading
+                        loadingIndicator.classList.add('hidden');
+                        chartContainer.classList.remove('hidden');
+                        
+                    } catch (error) {
+                        console.error('Error updating chart:', error);
+                        loadingIndicator.innerHTML = `
+                            <i class="fas fa-exclamation-triangle text-2xl text-red-500 mb-2"></i>
+                            <div class="text-red-600">Failed to load chart data</div>
+                        `;
+                    }
+                });
+            });
+            
+            // Create initial chart after modal is added to DOM
             setTimeout(() => {
                 const canvas = document.getElementById('modalPriceChart');
                 if (canvas && chartData.chart_config) {
-                    new Chart(canvas.getContext('2d'), chartData.chart_config);
+                    currentChart = new Chart(canvas.getContext('2d'), chartData.chart_config);
                 }
             }, 100);
+            
+            // Clean up chart when modal is closed
+            const originalRemove = modal.remove;
+            modal.remove = function() {
+                if (currentChart) {
+                    currentChart.destroy();
+                    currentChart = null;
+                }
+                originalRemove.call(this);
+            };
         }
         
         function createModal(title, content) {
@@ -1322,7 +1926,7 @@
             modal.innerHTML = `
                 <div class="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
                     <div class="flex items-center justify-between p-6 border-b border-gray-100">
-                        <h3 class="text-lg font-semibold text-gray-800">${title}</h3>
+                        <h3 class="modal-title text-lg font-semibold text-gray-800">${title}</h3>
                         <button class="modal-close-btn text-gray-400 hover:text-gray-600">
                             <i class="fas fa-times text-xl"></i>
                         </button>

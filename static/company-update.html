@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Update - Vietnamese Stock Analysis</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #1F2937;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            color: #6B7280;
+            margin: 0;
+        }
+        
+        .update-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3B82F6;
+        }
+        
+        .update-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .update-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+        
+        .update-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1F2937;
+            margin: 0;
+        }
+        
+        .update-description {
+            color: #6B7280;
+            line-height: 1.6;
+            margin: 15px 0;
+        }
+        
+        .warning-box {
+            background: #FEF3CD;
+            border: 1px solid #F59E0B;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #92400E;
+        }
+        
+        .warning-box strong {
+            color: #B45309;
+        }
+        
+        .update-button {
+            background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .update-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .update-button:disabled {
+            background: #9CA3AF;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .progress-section {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #F3F4F6;
+            border-radius: 8px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #E5E7EB;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3B82F6, #1D4ED8);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            font-size: 14px;
+            color: #374151;
+            margin-top: 5px;
+        }
+        
+        .results-section {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .result-card {
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+        }
+        
+        .result-card.success {
+            background: #F0FDF4;
+            border-color: #10B981;
+        }
+        
+        .result-card.error {
+            background: #FEF2F2;
+            border-color: #EF4444;
+        }
+        
+        .result-card.warning {
+            background: #FFFBEB;
+            border-color: #F59E0B;
+        }
+        
+        .back-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #3B82F6;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .back-nav:hover {
+            color: #1D4ED8;
+        }
+        
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #F9FAFB;
+            border-radius: 8px;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1F2937;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6B7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-nav">
+            ← Back to Home
+        </a>
+        
+        <div class="header">
+            <h1>Company Data Update</h1>
+            <p class="subtitle">Manual update tools for company information and events data</p>
+        </div>
+        
+        <!-- Manual Company Events Update Section -->
+        <div class="update-section">
+            <div class="update-header">
+                <div class="update-icon">
+                    📅
+                </div>
+                <h2 class="update-title">Manual Company Events Update</h2>
+            </div>
+            
+            <p class="update-description">
+                This tool will delete all current stock events data and fetch fresh event information from vnstock for all stocks mentioned in the last 30 days. Company events include dividends, stock splits, shareholder meetings, and other corporate actions.
+            </p>
+            
+            <div class="warning-box">
+                <strong>⚠️ Important:</strong> This action will permanently delete all existing stock events data and replace it with fresh data from vnstock. This process may take several minutes depending on the number of stocks to update.
+            </div>
+            
+            <button id="updateEventsBtn" class="update-button">
+                <span id="updateIcon">🔄</span>
+                <span id="updateText">Update Company Events</span>
+            </button>
+            
+            <div id="progressSection" class="progress-section">
+                <div class="progress-text" id="progressText">Initializing...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressDetails"></div>
+            </div>
+            
+            <div id="resultsSection" class="results-section">
+                <h3>Update Results</h3>
+                <div id="statsSection" class="stats-summary"></div>
+                <div id="resultsGrid" class="results-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('updateEventsBtn').addEventListener('click', async function() {
+            const button = this;
+            const icon = document.getElementById('updateIcon');
+            const text = document.getElementById('updateText');
+            const progressSection = document.getElementById('progressSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressDetails = document.getElementById('progressDetails');
+            
+            // Reset UI
+            button.disabled = true;
+            icon.textContent = '⏳';
+            text.textContent = 'Updating...';
+            progressSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            progressFill.style.width = '0%';
+            
+            try {
+                // Step 1: Get recent stocks count
+                progressText.textContent = 'Getting stocks mentioned in last 30 days...';
+                progressFill.style.width = '10%';
+                
+                const recentStocksResponse = await fetch('/recent-stocks?days=30');
+                const recentStocksData = await recentStocksResponse.json();
+                const stockCount = recentStocksData.count || 0;
+                
+                progressDetails.textContent = `Found ${stockCount} stocks to update`;
+                progressFill.style.width = '20%';
+                
+                if (stockCount === 0) {
+                    throw new Error('No stocks found in the last 30 days');
+                }
+                
+                // Step 2: Start the update process
+                progressText.textContent = 'Starting company events update...';
+                progressFill.style.width = '30%';
+                
+                const updateResponse = await fetch('/company-events/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    throw new Error(errorData.detail || 'Update failed');
+                }
+                
+                progressText.textContent = 'Processing update results...';
+                progressFill.style.width = '90%';
+                
+                const resultData = await updateResponse.json();
+                
+                // Step 3: Display results
+                progressText.textContent = 'Update completed!';
+                progressFill.style.width = '100%';
+                
+                setTimeout(() => {
+                    displayResults(resultData);
+                    progressSection.style.display = 'none';
+                    resultsSection.style.display = 'block';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Update error:', error);
+                progressText.textContent = 'Update failed';
+                progressDetails.textContent = `Error: ${error.message}`;
+                progressFill.style.width = '0%';
+                
+                // Show error in results
+                setTimeout(() => {
+                    displayError(error.message);
+                    resultsSection.style.display = 'block';
+                }, 1000);
+            } finally {
+                // Reset button
+                setTimeout(() => {
+                    button.disabled = false;
+                    icon.textContent = '🔄';
+                    text.textContent = 'Update Company Events';
+                }, 2000);
+            }
+        });
+        
+        function displayResults(data) {
+            const statsSection = document.getElementById('statsSection');
+            const resultsGrid = document.getElementById('resultsGrid');
+            
+            // Display stats summary
+            if (data.summary) {
+                const summary = data.summary;
+                statsSection.innerHTML = `
+                    <div class="stat-item">
+                        <div class="stat-number">${summary.total_stocks_processed}</div>
+                        <div class="stat-label">Total Stocks</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${summary.successful_updates}</div>
+                        <div class="stat-label">Successful</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${summary.failed_updates}</div>
+                        <div class="stat-label">Failed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${summary.total_events_added}</div>
+                        <div class="stat-label">Events Added</div>
+                    </div>
+                `;
+            }
+            
+            // Display individual stock results
+            let resultsHTML = '';
+            
+            // Successful updates
+            if (data.updated_stocks && data.updated_stocks.length > 0) {
+                data.updated_stocks.forEach(stock => {
+                    const cardClass = stock.events_count > 0 ? 'success' : 'warning';
+                    const statusText = stock.events_count > 0 
+                        ? `${stock.events_count} events added` 
+                        : 'No events found';
+                    
+                    resultsHTML += `
+                        <div class="result-card ${cardClass}">
+                            <strong>${stock.symbol}</strong><br>
+                            <small>${statusText}</small>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Failed updates
+            if (data.failed_stocks && data.failed_stocks.length > 0) {
+                data.failed_stocks.forEach(stock => {
+                    resultsHTML += `
+                        <div class="result-card error">
+                            <strong>${stock.symbol}</strong><br>
+                            <small>Error: ${stock.error}</small>
+                        </div>
+                    `;
+                });
+            }
+            
+            resultsGrid.innerHTML = resultsHTML;
+        }
+        
+        function displayError(errorMessage) {
+            const statsSection = document.getElementById('statsSection');
+            const resultsGrid = document.getElementById('resultsGrid');
+            
+            statsSection.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-number">❌</div>
+                    <div class="stat-label">Update Failed</div>
+                </div>
+            `;
+            
+            resultsGrid.innerHTML = `
+                <div class="result-card error">
+                    <strong>Update Error</strong><br>
+                    <small>${errorMessage}</small>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
