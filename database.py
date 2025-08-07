@@ -466,6 +466,7 @@ class DatabaseService:
                     "symbol": stock_data["symbol"],
                     "name": stock_data["name"],
                     "exchange": stock_data["exchange"],
+                    "isvn30": stock_data["isvn30"],
                     "sentiment": overall_sentiment,
                     "posts_count": stock_data["posts_count"],
                     "last_updated": stock_data["last_updated"],
@@ -473,8 +474,8 @@ class DatabaseService:
                     "posts": stock_data["posts"]  # Include detailed post information
                 })
             
-            # Sort by posts count (most mentioned first)
-            result.sort(key=lambda x: x["posts_count"], reverse=True)
+            # Sort by last_updated (most recently mentioned first)
+            result.sort(key=lambda x: x["last_updated"], reverse=True)
             
             return result
             
