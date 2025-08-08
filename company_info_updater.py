@@ -4,6 +4,7 @@ Fetches and updates company overview, events, and dividends for mentioned stocks
 """
 
 import pandas as pd
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 from database import db_service
 
@@ -129,8 +130,8 @@ async def update_company_events(stock_symbol: str) -> bool:
     try:
         print(f"Fetching company events for {stock_symbol}...")
         
-        # Create Company instance for events
-        company = Company(stock_symbol)
+        # Create Company instance for events using VCI source (matching Company Update implementation)
+        company = Vnstock().stock(symbol=stock_symbol, source='VCI').company
         
         # Get company events data
         events_df = company.events()
@@ -139,67 +140,53 @@ async def update_company_events(stock_symbol: str) -> bool:
             print(f"No events data available for {stock_symbol}")
             return False
         
-        # Convert DataFrame to list of dictionaries
+        # Convert DataFrame to list of dictionaries (matching Company Update implementation)
         events_data = []
-        print(f"Debug: Events DataFrame columns for {stock_symbol}: {list(events_df.columns)}")
-        if not events_df.empty:
-            print(f"Debug: First event sample: {events_df.iloc[0].to_dict()}")
         
         for _, row in events_df.iterrows():
             event_dict = row.to_dict()
             
-            # Clean up the data and map vnstock column names to database column names
+            # Helper function to parse dates from vnstock
+            def parse_date(date_str):
+                if not date_str or str(date_str).lower() == 'nan':
+                    return None
+                try:
+                    # vnstock returns dates as strings like '2012-05-25'
+                    return datetime.strptime(str(date_str), "%Y-%m-%d").date().isoformat()
+                except:
+                    return None
+            
+            # Helper function to convert vnstock numeric values  
+            def convert_numeric(value):
+                if not value or str(value).lower() == 'nan':
+                    return None
+                return str(value)
+            
+            # Clean up the data - use exact same structure as Company Update
             cleaned_event = {}
             
-            # Map vnstock columns to database columns
-            column_mapping = {
-                'event_list_name': 'event_type',      # vnstock: event_list_name -> DB: event_type
-                'event_title': 'event_name',          # vnstock: event_title -> DB: event_name
-                'public_date': 'event_date',          # vnstock: public_date -> DB: event_date
-                'exright_date': 'ex_date',            # vnstock: exright_date -> DB: ex_date
-                'record_date': 'record_date',         # vnstock: record_date -> DB: record_date (same)
-                'issue_date': 'issue_date',           # vnstock: issue_date -> DB: issue_date (same)
-                'ratio': 'ratio',                     # vnstock: ratio -> DB: ratio (same)
-                'value': 'value',                     # vnstock: value -> DB: value (same)
-            }
-            
-            # Additional mapping for description (use event_title as fallback)
-            description_mapping = {
-                'event_title': 'description',        # vnstock: event_title -> DB: description
-            }
-            
-            # Apply main column mapping and clean data
-            for vnstock_key, db_key in column_mapping.items():
-                if vnstock_key in event_dict:
-                    value = event_dict[vnstock_key]
-                    
-                    if pd.isna(value):
-                        cleaned_event[db_key] = None
-                    elif db_key in ['event_date', 'ex_date', 'record_date', 'issue_date'] and value:
-                        # Ensure date fields are properly formatted
-                        try:
-                            if isinstance(value, str):
-                                cleaned_event[db_key] = value
-                            else:
-                                cleaned_event[db_key] = str(value)
-                        except:
-                            cleaned_event[db_key] = None
-                    else:
-                        cleaned_event[db_key] = value
-                else:
-                    # If vnstock column doesn't exist, set to None
-                    cleaned_event[db_key] = None
-            
-            # Apply description mapping separately to avoid conflicts
-            for vnstock_key, db_key in description_mapping.items():
-                if vnstock_key in event_dict:
-                    value = event_dict[vnstock_key]
-                    if not pd.isna(value):
-                        cleaned_event[db_key] = value
-                    else:
-                        cleaned_event[db_key] = None
-                else:
-                    cleaned_event[db_key] = None
+            # Map vnstock fields directly (same as database.py update_company_events)
+            cleaned_event.update({
+                "event_title": event_dict.get("event_title"),
+                "en__event_title": event_dict.get("en__event_title"),
+                "public_date": parse_date(event_dict.get("public_date")),
+                "issue_date": parse_date(event_dict.get("issue_date")),
+                "source_url": event_dict.get("source_url"),
+                "event_list_code": event_dict.get("event_list_code"),
+                "ratio": convert_numeric(event_dict.get("ratio")),
+                "value": convert_numeric(event_dict.get("value")),
+                "record_date": parse_date(event_dict.get("record_date")),
+                "exright_date": parse_date(event_dict.get("exright_date")),
+                "event_list_name": event_dict.get("event_list_name"),
+                "en__event_list_name": event_dict.get("en__event_list_name"),
+                # Additional database fields (matching database.py)
+                "description": "",
+                "event_type": event_dict.get("event_list_code", ""),  # Use code as type
+                "event_name": event_dict.get("event_title", ""),     # Use title as name  
+                "event_date": parse_date(event_dict.get("issue_date")),  # Use issue_date as primary event date
+                "ex_date": parse_date(event_dict.get("exright_date")),   # Use exright_date as ex_date
+                "place": ""
+            })
             
             events_data.append(cleaned_event)
         

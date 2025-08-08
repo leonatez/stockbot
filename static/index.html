@@ -469,6 +469,58 @@
             
             <!-- Company Update Page -->
             <div id="companyUpdatePage" class="page-content hidden">
+                <!-- Manual Company Info Update Section -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-building text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-dark">Manual Company Info Update</h3>
+                            <p class="text-gray-500">Update stock records with ICB codes and company information from VNStock</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                        <p class="text-gray-700 leading-relaxed">
+                            This tool updates stock records with ICB codes and company information from VNStock. It fetches comprehensive data including industry classifications, company names, and ICB codes for all Vietnamese stocks, enabling better industry analysis and contextual stock insights.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+                            <div>
+                                <p class="font-semibold text-blue-800 mb-1">Safe Update Process</p>
+                                <p class="text-blue-700 text-sm">This process updates all stock records with the latest company information from VNStock, including ICB industry codes that enable industry-level analysis. Safe to run multiple times - existing data will be preserved and enhanced.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="updateCompanyInfoBtn" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i id="updateCompanyInfoIcon" class="fas fa-sync-alt mr-3"></i>
+                        <span id="updateCompanyInfoText">Update Company Info</span>
+                    </button>
+                    
+                    <!-- Progress Section -->
+                    <div id="companyInfoProgressSection" class="hidden mt-8 p-6 bg-gray-50 rounded-lg">
+                        <div class="text-center mb-4">
+                            <div id="companyInfoProgressText" class="text-lg font-medium text-gray-800 mb-2">Initializing...</div>
+                            <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                                <div id="companyInfoProgressBar" class="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <div id="companyInfoProgressDetails" class="text-sm text-gray-600"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Results Section -->
+                    <div id="companyInfoResultsSection" class="hidden mt-8">
+                        <h4 class="text-xl font-bold text-dark mb-4">Company Info Update Results</h4>
+                        <div id="companyInfoStatsSection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                        <div id="companyInfoResultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    </div>
+                </div>
+                
                 <!-- Manual Company Events Update Section -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
                     <div class="flex items-center gap-4 mb-6">
@@ -694,6 +746,11 @@
 
         // Company Update functionality
         function setupCompanyUpdateEventListeners() {
+            const updateCompanyInfoBtn = document.getElementById('updateCompanyInfoBtn');
+            if (updateCompanyInfoBtn) {
+                updateCompanyInfoBtn.addEventListener('click', updateCompanyInfo);
+            }
+            
             const updateEventsBtn = document.getElementById('updateCompanyEventsBtn');
             if (updateEventsBtn) {
                 updateEventsBtn.addEventListener('click', updateCompanyEvents);
@@ -703,6 +760,167 @@
             if (updateDividendsBtn) {
                 updateDividendsBtn.addEventListener('click', updateCompanyDividends);
             }
+        }
+        
+        async function updateCompanyInfo() {
+            const button = document.getElementById('updateCompanyInfoBtn');
+            const icon = document.getElementById('updateCompanyInfoIcon');
+            const text = document.getElementById('updateCompanyInfoText');
+            const progressSection = document.getElementById('companyInfoProgressSection');
+            const resultsSection = document.getElementById('companyInfoResultsSection');
+            const progressBar = document.getElementById('companyInfoProgressBar');
+            const progressText = document.getElementById('companyInfoProgressText');
+            const progressDetails = document.getElementById('companyInfoProgressDetails');
+            
+            // Reset UI
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin mr-3';
+            text.textContent = 'Updating...';
+            progressSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+            progressBar.style.width = '0%';
+            
+            try {
+                // Step 1: Initialize
+                progressText.textContent = 'Fetching stock symbols with industry data from VNStock...';
+                progressBar.style.width = '20%';
+                
+                // Step 2: Start the update process
+                progressText.textContent = 'Starting company info update...';
+                progressBar.style.width = '40%';
+                
+                const updateResponse = await fetch('/company-info/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    throw new Error(errorData.detail || 'Company info update failed');
+                }
+                
+                progressText.textContent = 'Processing update results...';
+                progressBar.style.width = '80%';
+                
+                const resultData = await updateResponse.json();
+                
+                // Step 3: Display results
+                progressText.textContent = 'Company info update completed!';
+                progressBar.style.width = '100%';
+                
+                setTimeout(() => {
+                    displayCompanyInfoResults(resultData);
+                    progressSection.classList.add('hidden');
+                    resultsSection.classList.remove('hidden');
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Company info update error:', error);
+                progressText.textContent = 'Company info update failed';
+                progressDetails.textContent = `Error: ${error.message}`;
+                progressBar.style.width = '0%';
+                
+                // Show error in results
+                setTimeout(() => {
+                    displayCompanyInfoError(error.message);
+                    resultsSection.classList.remove('hidden');
+                }, 1000);
+            } finally {
+                // Reset button
+                setTimeout(() => {
+                    button.disabled = false;
+                    icon.className = 'fas fa-sync-alt mr-3';
+                    text.textContent = 'Update Company Info';
+                }, 2000);
+            }
+        }
+        
+        function displayCompanyInfoResults(data) {
+            const statsSection = document.getElementById('companyInfoStatsSection');
+            const resultsGrid = document.getElementById('companyInfoResultsGrid');
+            
+            // Display stats summary
+            if (data.summary) {
+                const summary = data.summary;
+                statsSection.innerHTML = `
+                    <div class="bg-gray-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-gray-800">${summary.total_stocks_processed}</div>
+                        <div class="text-sm text-gray-600">Total Stocks</div>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-green-600">${summary.successful_updates}</div>
+                        <div class="text-sm text-green-700">Successfully Updated</div>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-red-600">${summary.failed_updates}</div>
+                        <div class="text-sm text-red-700">Failed Updates</div>
+                    </div>
+                `;
+            }
+            
+            // Display success message
+            resultsGrid.innerHTML = `
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                        <strong class="text-green-800">Update Successful!</strong>
+                    </div>
+                    <p class="text-green-700 text-sm">Company information and ICB codes updated for ${data.updated_stocks} stocks</p>
+                </div>
+            `;
+            
+            // Show failed stocks if any
+            if (data.failed_stocks && data.failed_stocks.length > 0) {
+                let failedHTML = '';
+                data.failed_stocks.slice(0, 5).forEach(failure => {
+                    failedHTML += `
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i class="fas fa-exclamation-circle text-red-600"></i>
+                                <strong class="text-red-800">${failure.symbol || 'Unknown'}</strong>
+                            </div>
+                            <p class="text-red-700 text-sm">${failure.error}</p>
+                        </div>
+                    `;
+                });
+                resultsGrid.innerHTML += failedHTML;
+                
+                if (data.failed_stocks.length > 5) {
+                    resultsGrid.innerHTML += `
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i class="fas fa-exclamation-triangle text-amber-600"></i>
+                                <strong class="text-amber-800">+${data.failed_stocks.length - 5} more failures</strong>
+                            </div>
+                            <p class="text-amber-700 text-sm">Check console for details</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        function displayCompanyInfoError(errorMessage) {
+            const statsSection = document.getElementById('companyInfoStatsSection');
+            const resultsGrid = document.getElementById('companyInfoResultsGrid');
+            
+            statsSection.innerHTML = `
+                <div class="bg-red-50 p-4 rounded-lg text-center">
+                    <div class="text-2xl font-bold text-red-600">❌</div>
+                    <div class="text-sm text-red-700">Update Failed</div>
+                </div>
+            `;
+            
+            resultsGrid.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-exclamation-circle text-red-600"></i>
+                        <strong class="text-red-800">Company Info Update Error</strong>
+                    </div>
+                    <p class="text-red-700 text-sm">${errorMessage}</p>
+                </div>
+            `;
         }
         
         async function updateCompanyEvents() {
@@ -1205,9 +1423,9 @@
                 sources = result.sources.map(dbSource => ({
                     url: dbSource.url,
                     sourceName: dbSource.name,
-                    sourceType: "Company",
+                    sourceType: dbSource.source_type || "Company",
                     xpath: dbSource.xpath_title || "",
-                    pagination: "",
+                    pagination: dbSource.pagination_rule || "",
                     contentXpath: dbSource.xpath_content || "",
                     contentDateXpath: dbSource.xpath_date || "",
                     status: dbSource.status || "active",
@@ -1392,11 +1610,23 @@
         }
 
         // Form handling functions
-        function showNewSourceForm() {
+        function showNewSourceForm(isEdit = false) {
             newSourceForm.classList.remove("hidden");
             addNewPageBtn.style.display = "none";
-            sourceForm.reset();
-            currentEditingIndex = -1;
+            
+            // Only reset form if it's a new source, not an edit
+            if (!isEdit) {
+                sourceForm.reset();
+                currentEditingIndex = -1;
+            }
+            
+            // Update form title based on mode
+            const formTitle = newSourceForm.querySelector('h4');
+            if (isEdit && currentEditingIndex >= 0) {
+                formTitle.innerHTML = '<i class="fas fa-edit mr-2 text-primary"></i>Edit Source';
+            } else {
+                formTitle.innerHTML = '<i class="fas fa-plus-circle mr-2 text-primary"></i>Configure New Source';
+            }
         }
 
         function hideNewSourceForm() {
@@ -1420,15 +1650,43 @@
                 contentDateXpath: formData.get("contentDateXpath"),
             };
 
-            try {
-                const response = await fetch("/sources", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(sourceData),
-                    mode: 'cors'
-                });
+            const isEditing = currentEditingIndex >= 0;
+            const sourceId = isEditing ? sources[currentEditingIndex].id : null;
 
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            try {
+                let response;
+                
+                if (isEditing) {
+                    // Update existing source
+                    console.log(`Updating source ${sourceId}:`, sourceData);
+                    response = await fetch(`/sources/${sourceId}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(sourceData),
+                        mode: 'cors'
+                    });
+                } else {
+                    // Create new source
+                    console.log("Creating new source:", sourceData);
+                    response = await fetch("/sources", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(sourceData),
+                        mode: 'cors'
+                    });
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('Save result:', result);
+                
+                // Show success message
+                const action = isEditing ? 'updated' : 'saved';
+                showSuccess(`Source "${sourceData.sourceName}" ${action} successfully`);
                 
                 await loadSourcesFromDatabase();
                 hideNewSourceForm();
@@ -1529,23 +1787,74 @@
 
         function editSource(index) {
             const source = sources[index];
+            
+            if (!source) {
+                console.error('Source not found at index:', index);
+                return;
+            }
+            
             currentEditingIndex = index;
             
-            sourceForm.sourceName.value = source.sourceName;
-            sourceForm.sourceType.value = source.sourceType;
-            sourceForm.url.value = source.url;
-            sourceForm.xpath.value = source.xpath || '';
-            sourceForm.paginationRule.value = source.pagination || '';
-            sourceForm.contentXpath.value = source.contentXpath || '';
-            sourceForm.contentDateXpath.value = source.contentDateXpath || '';
+            if (!sourceForm) {
+                console.error('sourceForm not found');
+                return;
+            }
             
-            showNewSourceForm();
+            try {
+                // Use querySelector method for reliable form field access
+                const fields = [
+                    {name: 'sourceName', value: source.sourceName},
+                    {name: 'sourceType', value: source.sourceType},
+                    {name: 'url', value: source.url},
+                    {name: 'xpath', value: source.xpath || ''},
+                    {name: 'paginationRule', value: source.pagination || ''},
+                    {name: 'contentXpath', value: source.contentXpath || ''},
+                    {name: 'contentDateXpath', value: source.contentDateXpath || ''}
+                ];
+                
+                fields.forEach(field => {
+                    const element = sourceForm.querySelector(`[name="${field.name}"]`);
+                    if (element) {
+                        element.value = field.value;
+                    }
+                });
+                
+                showNewSourceForm(true);
+                
+            } catch (error) {
+                console.error('Error in editSource:', error);
+                showError('Failed to load source for editing');
+            }
         }
 
-        function deleteSource(index) {
-            if (confirm('Are you sure you want to delete this source?')) {
+        async function deleteSource(index) {
+            const source = sources[index];
+            if (!confirm(`Are you sure you want to delete "${source.sourceName}"? This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/sources/${source.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+                }
+                
+                // Remove from frontend array
                 sources.splice(index, 1);
                 updateSourcesList();
+                
+                showSuccess(`Source "${source.sourceName}" deleted successfully`);
+                
+            } catch (error) {
+                console.error('Error deleting source:', error);
+                showError(`Failed to delete source: ${error.message}`);
             }
         }
 
@@ -1647,6 +1956,33 @@
             setTimeout(() => {
                 errorBox.classList.add("hidden");
             }, 5000);
+        }
+
+        function showSuccess(message) {
+            // Create a temporary success message element
+            const successBox = document.createElement('div');
+            successBox.className = 'fixed top-4 right-4 z-50 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 transition-all duration-300';
+            successBox.innerHTML = `
+                <div class="flex-shrink-0">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                </div>
+                <div class="flex-grow">
+                    <p class="font-medium">${message}</p>
+                </div>
+            `;
+            
+            document.body.appendChild(successBox);
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                successBox.style.opacity = '0';
+                successBox.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (successBox.parentNode) {
+                        successBox.parentNode.removeChild(successBox);
+                    }
+                }, 300);
+            }, 3000);
         }
 
         // Filter functionality (simplified for now)

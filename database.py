@@ -39,15 +39,13 @@ class DatabaseService:
                 "xpath_title": source_data.get("xpath"),  # XPath for finding post links
                 "xpath_content": source_data.get("contentXpath"),  # XPath for post content
                 "xpath_date": source_data.get("contentDateXpath"),  # XPath for post date
+                "source_type": source_data.get("sourceType", "Company"),  # Source classification
+                "pagination_rule": source_data.get("pagination"),  # Pagination pattern
                 "status": "active",
                 "created_at": datetime.now().isoformat()
             }
             
-            print(f"Saving source to database: {db_source['name']} - {db_source['url']}")
-            
-            # Store pagination rule in a JSON field or as metadata
-            # Note: The schema doesn't show a pagination field, so we might need to add it
-            # For now, we'll store it in the name or create a separate field
+            print(f"Saving source to database: {db_source['name']} - {db_source['url']} ({db_source['source_type']})")
             
             result = self.supabase.table("sources").insert(db_source).execute()
             
@@ -95,6 +93,67 @@ class DatabaseService:
                 
         except Exception as e:
             print(f"Error updating source status: {e}")
+            return False
+
+    async def update_source(self, source_id: str, source_data: Dict[str, Any]) -> bool:
+        """Update source configuration in database"""
+        try:
+            # First check if source exists
+            existing_result = self.supabase.table("sources").select("name").eq("id", source_id).execute()
+            if not existing_result.data:
+                print(f"✗ Source {source_id} not found")
+                return False
+            
+            # Map from frontend fields to database fields
+            db_update = {
+                "name": source_data.get("sourceName"),
+                "url": source_data.get("url"),
+                "xpath_title": source_data.get("xpath"),
+                "xpath_content": source_data.get("contentXpath"),
+                "xpath_date": source_data.get("contentDateXpath"),
+                "source_type": source_data.get("sourceType", "Company"),
+                "pagination_rule": source_data.get("pagination")
+            }
+            
+            print(f"Updating source {source_id}: {db_update['name']} - {db_update['url']}")
+            
+            # Update the source
+            result = self.supabase.table("sources").update(db_update).eq("id", source_id).execute()
+            
+            if result.data:
+                print(f"✓ Source '{source_data.get('sourceName')}' (ID: {source_id}) updated successfully")
+                return True
+            else:
+                print(f"✗ Failed to update source {source_id}")
+                return False
+                
+        except Exception as e:
+            print(f"✗ Error updating source {source_id}: {e}")
+            return False
+
+    async def delete_source(self, source_id: str) -> bool:
+        """Delete source from database"""
+        try:
+            # First check if source exists
+            existing_result = self.supabase.table("sources").select("name").eq("id", source_id).execute()
+            if not existing_result.data:
+                print(f"✗ Source {source_id} not found")
+                return False
+            
+            source_name = existing_result.data[0]["name"]
+            
+            # Delete the source
+            result = self.supabase.table("sources").delete().eq("id", source_id).execute()
+            
+            if result.data:
+                print(f"✓ Source '{source_name}' (ID: {source_id}) deleted successfully")
+                return True
+            else:
+                print(f"✗ Failed to delete source {source_id}")
+                return False
+                
+        except Exception as e:
+            print(f"✗ Error deleting source {source_id}: {e}")
             return False
     
     # ===== POST MANAGEMENT =====
@@ -500,6 +559,173 @@ class DatabaseService:
         except Exception as e:
             print(f"Error fetching latest daily sentiment summary: {e}")
             return ""
+
+    # ===== CONTEXTUAL ANALYSIS METHODS =====
+    
+    async def get_industry_context_for_stocks(self, stock_symbols: List[str], lookback_days: int = 7) -> Dict[str, Any]:
+        """
+        Get industry context for given stock symbols within lookback period
+        
+        Args:
+            stock_symbols: List of stock symbols
+            lookback_days: Number of days to look back for industry posts
+            
+        Returns:
+            Dictionary containing industry context for each stock
+        """
+        try:
+            cutoff_date = (datetime.now().date() - timedelta(days=lookback_days)).isoformat()
+            
+            # Get ICB codes for the stocks
+            stocks_result = self.supabase.table("stocks").select(
+                "symbol, icb_code1, icb_code2, icb_code3, icb_code4"
+            ).in_("symbol", stock_symbols).execute()
+            
+            if not stocks_result.data:
+                return {}
+            
+            # Collect all relevant ICB codes
+            all_icb_codes = set()
+            stock_icb_mapping = {}
+            
+            for stock in stocks_result.data:
+                symbol = stock["symbol"]
+                icb_codes = [
+                    stock.get("icb_code1"), stock.get("icb_code2"), 
+                    stock.get("icb_code3"), stock.get("icb_code4")
+                ]
+                # Filter out None/empty codes
+                valid_codes = [code for code in icb_codes if code and str(code) != 'nan']
+                
+                if valid_codes:
+                    stock_icb_mapping[symbol] = valid_codes
+                    all_icb_codes.update(valid_codes)
+            
+            if not all_icb_codes:
+                return {}
+            
+            # Get industry posts for these ICB codes
+            industry_posts_result = self.supabase.table("post_mentioned_industries").select("""
+                icb_code, sentiment, summary, confidence_score,
+                posts(published_date, url, source_id, sources(name)),
+                industries(icb_name, en_icb_name, level)
+            """).in_("icb_code", list(all_icb_codes)).gte(
+                "posts.published_date", cutoff_date
+            ).order("confidence_score", desc=True).execute()
+            
+            # Group by stock symbol
+            context_by_stock = {}
+            for symbol in stock_symbols:
+                if symbol not in stock_icb_mapping:
+                    continue
+                    
+                stock_icb_codes = stock_icb_mapping[symbol]
+                relevant_posts = []
+                
+                for post in industry_posts_result.data or []:
+                    if post["icb_code"] in stock_icb_codes:
+                        relevant_posts.append({
+                            "industry_name": post["industries"]["icb_name"],
+                            "industry_level": post["industries"]["level"],
+                            "sentiment": post["sentiment"],
+                            "summary": post["summary"],
+                            "confidence": post["confidence_score"],
+                            "post_date": post["posts"]["published_date"],
+                            "source_name": post["posts"]["sources"]["name"] if post["posts"]["sources"] else "Unknown"
+                        })
+                
+                if relevant_posts:
+                    # Calculate overall industry sentiment
+                    sentiments = [p["sentiment"] for p in relevant_posts if p["sentiment"]]
+                    sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0}
+                    for sentiment in sentiments:
+                        sentiment_counts[sentiment.lower()] = sentiment_counts.get(sentiment.lower(), 0) + 1
+                    
+                    overall_sentiment = max(sentiment_counts.items(), key=lambda x: x[1])[0] if sentiments else "neutral"
+                    
+                    context_by_stock[symbol] = {
+                        "overall_industry_sentiment": overall_sentiment,
+                        "industry_posts_count": len(relevant_posts),
+                        "related_industries": relevant_posts[:5]  # Top 5 most relevant
+                    }
+            
+            return context_by_stock
+            
+        except Exception as e:
+            print(f"Error getting industry context: {e}")
+            return {}
+    
+    async def get_macro_context_for_date_range(self, start_date: str, end_date: str) -> Dict[str, Any]:
+        """
+        Get macro economic context for a date range
+        
+        Args:
+            start_date: Start date in ISO format
+            end_date: End date in ISO format
+            
+        Returns:
+            Dictionary containing macro themes and indicators
+        """
+        try:
+            # Get macro themes mentioned in the period
+            themes_result = self.supabase.table("post_mentioned_macro_themes").select("""
+                macro_theme_id, sentiment, summary, confidence_score,
+                posts(published_date, source_id, sources(name)),
+                macro_themes(name, name_en, category_id, macro_categories(name, name_en))
+            """).gte("posts.published_date", start_date).lte("posts.published_date", end_date).order("confidence_score", desc=True).execute()
+            
+            # Get macro indicators mentioned in the period
+            indicators_result = self.supabase.table("post_macro_indicators").select("""
+                macro_indicator_id, current_value, projected_value, time_period, mentioned_context,
+                posts(published_date, source_id, sources(name)),
+                macro_indicators(name, name_en, unit, data_type)
+            """).gte("posts.published_date", start_date).lte("posts.published_date", end_date).execute()
+            
+            # Process themes
+            themes_by_category = {}
+            for theme_post in themes_result.data or []:
+                category = theme_post["macro_themes"]["macro_categories"]["name"] if theme_post["macro_themes"]["macro_categories"] else "Unknown"
+                
+                if category not in themes_by_category:
+                    themes_by_category[category] = []
+                
+                themes_by_category[category].append({
+                    "theme_name": theme_post["macro_themes"]["name"],
+                    "theme_name_en": theme_post["macro_themes"]["name_en"],
+                    "sentiment": theme_post["sentiment"],
+                    "summary": theme_post["summary"],
+                    "confidence": theme_post["confidence_score"],
+                    "post_date": theme_post["posts"]["published_date"],
+                    "source_name": theme_post["posts"]["sources"]["name"] if theme_post["posts"]["sources"] else "Unknown"
+                })
+            
+            # Process indicators
+            indicators_data = []
+            for indicator_post in indicators_result.data or []:
+                indicators_data.append({
+                    "indicator_name": indicator_post["macro_indicators"]["name"],
+                    "indicator_name_en": indicator_post["macro_indicators"]["name_en"],
+                    "current_value": indicator_post["current_value"],
+                    "projected_value": indicator_post["projected_value"],
+                    "time_period": indicator_post["time_period"],
+                    "context": indicator_post["mentioned_context"],
+                    "unit": indicator_post["macro_indicators"]["unit"],
+                    "post_date": indicator_post["posts"]["published_date"]
+                })
+            
+            return {
+                "themes_by_category": themes_by_category,
+                "indicators": indicators_data,
+                "summary": {
+                    "total_themes": len(themes_result.data or []),
+                    "total_indicators": len(indicators_result.data or []),
+                    "date_range": f"{start_date} to {end_date}"
+                }
+            }
+            
+        except Exception as e:
+            print(f"Error getting macro context: {e}")
+            return {"themes_by_category": {}, "indicators": [], "summary": {"total_themes": 0, "total_indicators": 0}}
 
     # ===== COMPANY INFORMATION UPDATES =====
     

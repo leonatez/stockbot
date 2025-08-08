@@ -236,6 +236,43 @@
             <p class="subtitle">Manual update tools for company information and events data</p>
         </div>
         
+        <!-- Manual Company Info Update Section -->
+        <div class="update-section">
+            <div class="update-header">
+                <div class="update-icon">
+                    🏢
+                </div>
+                <h2 class="update-title">Manual Company Info Update</h2>
+            </div>
+            
+            <p class="update-description">
+                This tool updates stock records with ICB codes and company information from VNStock. It fetches comprehensive data including industry classifications, company names, and ICB codes for all Vietnamese stocks, enabling better industry analysis and contextual stock insights.
+            </p>
+            
+            <div class="warning-box">
+                <strong>💡 Note:</strong> This process updates all stock records with the latest company information from VNStock, including ICB industry codes that enable industry-level analysis. Safe to run multiple times - existing data will be preserved and enhanced.
+            </div>
+            
+            <button id="updateCompanyInfoBtn" class="update-button">
+                <span id="companyInfoUpdateIcon">🔄</span>
+                <span id="companyInfoUpdateText">Update Company Info</span>
+            </button>
+            
+            <div id="companyInfoProgressSection" class="progress-section">
+                <div class="progress-text" id="companyInfoProgressText">Initializing...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="companyInfoProgressBar"></div>
+                </div>
+                <div class="progress-text" id="companyInfoProgressDetails"></div>
+            </div>
+            
+            <div id="companyInfoResultsSection" class="results-section">
+                <h3>Company Info Update Results</h3>
+                <div id="companyInfoStatsSection" class="stats-summary"></div>
+                <div id="companyInfoResultsGrid" class="results-grid"></div>
+            </div>
+        </div>
+        
         <!-- Manual Company Events Update Section -->
         <div class="update-section">
             <div class="update-header">
@@ -275,6 +312,157 @@
     </div>
 
     <script>
+        // Company Info Update functionality
+        document.getElementById('updateCompanyInfoBtn').addEventListener('click', async function() {
+            const button = this;
+            const icon = document.getElementById('companyInfoUpdateIcon');
+            const text = document.getElementById('companyInfoUpdateText');
+            const progressSection = document.getElementById('companyInfoProgressSection');
+            const resultsSection = document.getElementById('companyInfoResultsSection');
+            const progressBar = document.getElementById('companyInfoProgressBar');
+            const progressText = document.getElementById('companyInfoProgressText');
+            const progressDetails = document.getElementById('companyInfoProgressDetails');
+            
+            // Reset UI
+            button.disabled = true;
+            icon.textContent = '⏳';
+            text.textContent = 'Updating...';
+            progressSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            progressBar.style.width = '0%';
+            
+            try {
+                // Step 1: Initialize
+                progressText.textContent = 'Fetching stock symbols with industry data from VNStock...';
+                progressBar.style.width = '20%';
+                
+                // Step 2: Start the update process
+                progressText.textContent = 'Starting company info update...';
+                progressBar.style.width = '40%';
+                
+                const updateResponse = await fetch('/company-info/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!updateResponse.ok) {
+                    const errorData = await updateResponse.json();
+                    throw new Error(errorData.detail || 'Company info update failed');
+                }
+                
+                progressText.textContent = 'Processing update results...';
+                progressBar.style.width = '80%';
+                
+                const resultData = await updateResponse.json();
+                
+                // Step 3: Display results
+                progressText.textContent = 'Company info update completed!';
+                progressBar.style.width = '100%';
+                
+                setTimeout(() => {
+                    displayCompanyInfoResults(resultData);
+                    progressSection.style.display = 'none';
+                    resultsSection.style.display = 'block';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Company info update error:', error);
+                progressText.textContent = 'Company info update failed';
+                progressDetails.textContent = `Error: ${error.message}`;
+                progressBar.style.width = '0%';
+                
+                // Show error in results
+                setTimeout(() => {
+                    displayCompanyInfoError(error.message);
+                    resultsSection.style.display = 'block';
+                }, 1000);
+            } finally {
+                // Reset button
+                setTimeout(() => {
+                    button.disabled = false;
+                    icon.textContent = '🔄';
+                    text.textContent = 'Update Company Info';
+                }, 2000);
+            }
+        });
+        
+        function displayCompanyInfoResults(data) {
+            const statsSection = document.getElementById('companyInfoStatsSection');
+            const resultsGrid = document.getElementById('companyInfoResultsGrid');
+            
+            // Display stats summary
+            if (data.summary) {
+                const summary = data.summary;
+                statsSection.innerHTML = `
+                    <div class="stat-item">
+                        <div class="stat-number">${summary.total_stocks_processed}</div>
+                        <div class="stat-label">Total Stocks</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${summary.successful_updates}</div>
+                        <div class="stat-label">Successfully Updated</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${summary.failed_updates}</div>
+                        <div class="stat-label">Failed Updates</div>
+                    </div>
+                `;
+            }
+            
+            // Display success message
+            resultsGrid.innerHTML = `
+                <div class="result-card success">
+                    <strong>✅ Success!</strong><br>
+                    <small>Company information and ICB codes updated for ${data.updated_stocks} stocks</small>
+                </div>
+            `;
+            
+            // Show failed stocks if any
+            if (data.failed_stocks && data.failed_stocks.length > 0) {
+                let failedHTML = '';
+                data.failed_stocks.slice(0, 5).forEach(failure => {
+                    failedHTML += `
+                        <div class="result-card error">
+                            <strong>${failure.symbol || 'Unknown'}</strong><br>
+                            <small>Error: ${failure.error}</small>
+                        </div>
+                    `;
+                });
+                resultsGrid.innerHTML += failedHTML;
+                
+                if (data.failed_stocks.length > 5) {
+                    resultsGrid.innerHTML += `
+                        <div class="result-card warning">
+                            <strong>+${data.failed_stocks.length - 5} more failures</strong><br>
+                            <small>Check console for details</small>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        function displayCompanyInfoError(errorMessage) {
+            const statsSection = document.getElementById('companyInfoStatsSection');
+            const resultsGrid = document.getElementById('companyInfoResultsGrid');
+            
+            statsSection.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-number">❌</div>
+                    <div class="stat-label">Update Failed</div>
+                </div>
+            `;
+            
+            resultsGrid.innerHTML = `
+                <div class="result-card error">
+                    <strong>Company Info Update Error</strong><br>
+                    <small>${errorMessage}</small>
+                </div>
+            `;
+        }
+        
+        // Company Events Update functionality
         document.getElementById('updateEventsBtn').addEventListener('click', async function() {
             const button = this;
             const icon = document.getElementById('updateIcon');

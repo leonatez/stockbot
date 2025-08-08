@@ -10,6 +10,8 @@ id (UUID, Primary Key): Unique identifier
 name (TEXT): Display name of the source
 url (TEXT): Base URL of the source
 xpath_title, xpath_content, xpath_date (TEXT): XPath selectors for web scraping
+source_type (TEXT): Source classification (Company, Industry, Macro)
+pagination_rule (TEXT): Pagination pattern for multi-page crawling
 status (TEXT): Source status (default: 'active')
 created_at (TIMESTAMP): Creation timestamp
 

@@ -1,0 +1,85 @@
+0. I think you don't remember the schema of our current database. Please query yourselves on supabase to get current schema and update to our documents for next steps below.
+
+1. For industries table, please just record fields the same like the return from VNStock function:
+from vnstock import Listing
+listing = Listing()
+listing.industries_icb() #this returns a dataframe with columns icb_name, en_icb_name, icb_code, level. You can run yourselves to understand how the response is.
+
+2. For stocks table, this is the current schema:
+[
+  {
+    "column_name": "id",
+    "data_type": "uuid"
+  },
+  {
+    "column_name": "symbol",
+    "data_type": "text"
+  },
+  {
+    "column_name": "organ_name",
+    "data_type": "text"
+  },
+  {
+    "column_name": "exchange",
+    "data_type": "text"
+  },
+  {
+    "column_name": "description",
+    "data_type": "text"
+  },
+  {
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone"
+  },
+  {
+    "column_name": "organ_short_name",
+    "data_type": "text"
+  },
+  {
+    "column_name": "isvn30",
+    "data_type": "boolean"
+  },
+  {
+    "column_name": "icb_name1",
+    "data_type": "text"
+  },
+  {
+    "column_name": "icb_name2",
+    "data_type": "text"
+  },
+  {
+    "column_name": "icb_name3",
+    "data_type": "text"
+  },
+  {
+    "column_name": "icb_name4",
+    "data_type": "text"
+  },
+  {
+    "column_name": "charter_capital",
+    "data_type": "numeric"
+  },
+  {
+    "column_name": "issue_share",
+    "data_type": "bigint"
+  },
+  {
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone"
+  }
+]
+
+But when you run below script, this will return a lot of useful information for the stock:
+from vnstock import Listing
+listing = Listing()
+listing.symbols_by_industries() #This return these columns, you can run yourselves to explore: symbol, organ_name, icb_name3, icb_name2, icb_name4, com_type_code, icb_code1, icb_code2, icb_code3, icb_code4
+
+So please update the stocks table to include icb codes, then create a new function Manual Company Info Update in tab Company Update on frontend. The logic at backend is the same as Manual Company Events Update that we already have.
+
+3. With the information additionally added above, now we can map stocks and their industries using icb codes. So once Gemini analyze a stock, it will also find if the stock's industries are also mentioned in recent 7 days posts, if yes then use it for holistic analysis.
+
+4. For macro economic tables, I agree to go with your proposal, except the constraints in values of theme_id. Please just leave it whatever value for flexibility in summary. These macro economy information will be feed to Gemini for its stock analysis workflow.
+
+5. Please update above changes to claude.md as documentation.
+
+6. These updates will increase the analyzing time a lot. Please create progress bar while analyzing with proper logic to show how the progress is.

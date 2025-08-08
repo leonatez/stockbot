@@ -1449,6 +1449,49 @@ async def update_source_status(source_id: str, request: dict):
         print(f"Error updating source status: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update source status: {str(e)}")
 
+@app.put("/sources/{source_id}")
+async def update_source(source_id: str, request: CrawlRequest):
+    """Update source configuration"""
+    try:
+        # Update source in database
+        success = await db_service.update_source(source_id, request.dict())
+        
+        if success:
+            return JSONResponse(content={
+                "message": "Source updated successfully",
+                "source_id": source_id,
+                "source_name": request.sourceName
+            })
+        else:
+            raise HTTPException(status_code=404, detail="Source not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating source: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update source: {str(e)}")
+
+@app.delete("/sources/{source_id}")
+async def delete_source(source_id: str):
+    """Delete a source from database"""
+    try:
+        # Delete source from database
+        success = await db_service.delete_source(source_id)
+        
+        if success:
+            return JSONResponse(content={
+                "message": "Source deleted successfully",
+                "source_id": source_id
+            })
+        else:
+            raise HTTPException(status_code=404, detail="Source not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting source: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete source: {str(e)}")
+
 @app.get("/recent-stocks")
 async def get_recent_stocks(days: int = 3):
     """Get stocks mentioned in the last N days"""
@@ -1756,6 +1799,183 @@ async def get_vnindex_data(period: str = "1M"):
             status_code=500,
             content={"error": f"Failed to fetch VNINDEX data: {str(e)}"}
         )
+
+@app.post("/company-info/update")
+async def update_all_company_info():
+    """
+    Manual Company Info Update: Updates stock records with ICB codes and company information from VNStock
+    """
+    try:
+        from vnstock import Listing
+        
+        print("\n=== Manual Company Info Update Started ===")
+        
+        # Step 1: Get all symbols with industry info
+        print("Step 1: Fetching all stock symbols with industry data...")
+        listing = Listing()
+        symbols_df = listing.symbols_by_industries()
+        
+        if symbols_df is None or symbols_df.empty:
+            return JSONResponse(content={
+                "success": False,
+                "message": "No stock symbols data available",
+                "updated_stocks": 0,
+                "failed_stocks": []
+            })
+        
+        print(f"Found {len(symbols_df)} stocks with industry information")
+        
+        # Step 2: Process each stock
+        updated_stocks = 0
+        failed_stocks = []
+        
+        for _, row in symbols_df.iterrows():
+            try:
+                stock_symbol = row.get('symbol')
+                if not stock_symbol:
+                    continue
+                
+                # Prepare update data with ICB codes and company info
+                update_data = {
+                    'organ_name': row.get('organ_name', ''),
+                    'icb_name1': row.get('icb_name1', ''),
+                    'icb_name2': row.get('icb_name2', ''),
+                    'icb_name3': row.get('icb_name3', ''),
+                    'icb_name4': row.get('icb_name4', ''),
+                    'icb_code1': row.get('icb_code1', ''),
+                    'icb_code2': row.get('icb_code2', ''),
+                    'icb_code3': row.get('icb_code3', ''),
+                    'icb_code4': row.get('icb_code4', ''),
+                    'com_type_code': row.get('com_type_code', ''),
+                    'updated_at': datetime.now().isoformat()
+                }
+                
+                # Remove None/NaN values
+                update_data = {k: v for k, v in update_data.items() if v is not None and str(v) != 'nan'}
+                
+                # Update or create stock record
+                result = db_service.supabase.table("stocks").upsert({
+                    'symbol': stock_symbol,
+                    **update_data
+                }, on_conflict="symbol").execute()
+                
+                if result.data:
+                    updated_stocks += 1
+                    if updated_stocks % 50 == 0:  # Progress indication
+                        print(f"✓ Processed {updated_stocks} stocks...")
+                else:
+                    failed_stocks.append({
+                        "symbol": stock_symbol,
+                        "error": "Database upsert failed"
+                    })
+                    
+            except Exception as stock_error:
+                failed_stocks.append({
+                    "symbol": row.get('symbol', 'Unknown'),
+                    "error": str(stock_error)
+                })
+        
+        print(f"\n=== Company Info Update Summary ===")
+        print(f"Total stocks processed: {len(symbols_df)}")
+        print(f"Successfully updated: {updated_stocks}")
+        print(f"Failed updates: {len(failed_stocks)}")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Company info update completed. Updated {updated_stocks} stocks with ICB codes and company information.",
+            "summary": {
+                "total_stocks_processed": len(symbols_df),
+                "successful_updates": updated_stocks,
+                "failed_updates": len(failed_stocks)
+            },
+            "updated_stocks": updated_stocks,
+            "failed_stocks": failed_stocks[:10]  # Only return first 10 failures
+        })
+        
+    except Exception as e:
+        print(f"Critical error during company info update: {e}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Company info update failed: {str(e)}")
+
+@app.post("/industries/update")
+async def update_industries_table():
+    """
+    Update industries table with data from VNStock industries_icb() function
+    """
+    try:
+        from vnstock import Listing
+        
+        print("\n=== Industries Table Update Started ===")
+        
+        # Step 1: Get industries data from VNStock
+        print("Step 1: Fetching industries data from VNStock...")
+        listing = Listing()
+        industries_df = listing.industries_icb()
+        
+        if industries_df is None or industries_df.empty:
+            return JSONResponse(content={
+                "success": False,
+                "message": "No industries data available from VNStock"
+            })
+        
+        print(f"Found {len(industries_df)} industries")
+        
+        # Step 2: Clear existing industries and insert new data
+        print("Step 2: Updating industries table...")
+        
+        # Process each industry
+        updated_count = 0
+        failed_count = 0
+        
+        for _, row in industries_df.iterrows():
+            try:
+                industry_data = {
+                    'icb_code': str(row.get('icb_code')),
+                    'icb_name': row.get('icb_name', ''),
+                    'en_icb_name': row.get('en_icb_name', ''),
+                    'level': int(row.get('level', 0)),
+                    'updated_at': datetime.now().isoformat()
+                }
+                
+                # Upsert industry record
+                result = db_service.supabase.table("industries").upsert(
+                    industry_data, 
+                    on_conflict="icb_code"
+                ).execute()
+                
+                if result.data:
+                    updated_count += 1
+                    if updated_count % 20 == 0:  # Progress indication
+                        print(f"✓ Processed {updated_count} industries...")
+                else:
+                    failed_count += 1
+                    
+            except Exception as industry_error:
+                print(f"✗ Error processing industry {row.get('icb_code', 'Unknown')}: {industry_error}")
+                failed_count += 1
+        
+        print(f"\n=== Industries Update Summary ===")
+        print(f"Total industries processed: {len(industries_df)}")
+        print(f"Successfully updated: {updated_count}")
+        print(f"Failed updates: {failed_count}")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Industries update completed. Updated {updated_count} industries.",
+            "summary": {
+                "total_industries_processed": len(industries_df),
+                "successful_updates": updated_count,
+                "failed_updates": failed_count
+            },
+            "updated_industries": updated_count
+        })
+        
+    except Exception as e:
+        print(f"Critical error during industries update: {e}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Industries update failed: {str(e)}")
 
 @app.post("/company-events/update")
 async def update_all_company_events():

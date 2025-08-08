@@ -67,46 +67,108 @@ python test_database.py
 - `GET /sources` - Retrieve all active sources from database
 - `GET /dashboard/stats` - Get dashboard statistics from database views
 
-## Data Flow (Database-Integrated)
+### Company Data Management Endpoints
+- `POST /company-info/update` - Manual Company Info Update: Updates stock records with ICB codes and company information from VNStock
+- `POST /company-events/update` - Delete all stock events and update with fresh data from vnstock for stocks mentioned in last 30 days
+- `POST /company-dividends/update` - Delete all stock dividends and update with fresh data from vnstock for stocks mentioned in last 30 days
+- `POST /industries/update` - Update industries table with data from VNStock industries_icb() function
+
+## Data Flow (Enhanced Multi-Source Analysis)
+
+### Core Analysis Flow
 
 1. **Daily VN30 Update**:
    - At the start of each analysis task, system fetches current VN30 stocks using vnstock
    - Updates `isvn30` column in stocks table to reflect current VN30 membership
    - Ensures VN30 status is always current for analysis and reporting
 
-2. **Source Configuration**: 
-   - Users define XPath selectors for post links, content, and dates
-   - Source configurations are saved to `sources` table in Supabase
+2. **Multi-Source Configuration**: 
+   - Users configure three types of sources: Company, Industry, and Macro Economy
+   - Source configurations saved to `sources` table with `source_type` field
+   - Each source type requires different XPath selectors for content extraction
    
 3. **Smart Crawling with Deduplication**:
    - System checks database before crawling each post URL
    - If post exists: retrieves existing analysis from database (no re-crawling)
    - If post is new: crawls content using Selenium with anti-detection measures
    
-4. **Content Processing**:
+4. **Content Processing by Source Type**:
+   - **Company Posts**: Analyzed for individual stock mentions and sentiment
+   - **Industry Posts**: Analyzed for industry trends and sentiment using ICB codes
+   - **Macro Posts**: Analyzed for macro economic themes and indicators
    - XPath-based extraction with text cleaning for LLM processing
-   - Only new posts are sent to Gemini for analysis
-   
-5. **AI Analysis & Database Storage**:
-   - Gemini analyzes new posts for Vietnamese stock mentions and sentiment
-   - Results saved to database tables: `posts`, `post_mentioned_stocks`, `stocks`, `stock_daily_sentiment`
-   - Automatic stock creation for new symbols discovered
-   - Daily sentiment aggregation per stock
 
-6. **Automatic Stock Price Updates**:
+5. **Enhanced AI Analysis & Database Storage**:
+   - **Stock Analysis**: Gemini analyzes company posts for Vietnamese stock mentions and sentiment
+   - **Industry Analysis**: Gemini extracts mentioned industries (using VNStock ICB codes) with sentiment
+   - **Macro Analysis**: Gemini identifies macro themes and extracts economic indicators
+   - Results saved to respective tables: `posts`, `post_mentioned_stocks`, `post_mentioned_industries`, `post_mentioned_macro_themes`, `post_macro_indicators`
+   - Automatic stock/industry/theme creation for new symbols discovered
+   - Daily sentiment aggregation per stock, industry, and macro theme
+
+### Contextual Enhancement Flow
+
+6. **Industry Context Integration**:
+   - For each mentioned stock, system maps to relevant industries using ICB codes
+   - Searches industry posts from last 7 days for contextual sentiment
+   - Combines industry trends with direct stock mentions for holistic analysis
+
+7. **Macro Economic Context**:
+   - For analysis dates, system searches macro economy posts from last 3 days
+   - Extracts macro themes (market liquidity, global uncertainty, etc.) and indicators
+   - Provides macro economic backdrop for stock analysis decisions
+
+8. **Automatic Stock Price & Company Updates**:
    - After AI analysis identifies mentioned stocks, system automatically fetches their price history
+   - Updates company information including ICB codes from VNStock
    - Optimized queries: only fetches data from latest date in database to today
-   - Saves price data (OHLCV) to `stock_prices` table with upsert handling
+   - Saves data to `stock_prices`, updates `stocks` table with company info
    - Ensures price data is current for all mentioned stocks
    
-7. **Response Generation**:
-   - Combines existing database data with new analysis results
-   - Returns JSON response with both post-level and stock-level analysis
-   - Stock price data is available for further analysis and charting
+9. **Comprehensive Response Generation**:
+   - **Stock-Level Analysis**: Direct mentions + industry context + macro context
+   - **Contextual Factors**: Related industry sentiment and macro environment
+   - **Progress Tracking**: Real-time progress updates during analysis
+   - Returns enhanced JSON response with multi-dimensional analysis results
+
+## Enhanced Database Schema
+
+### New Tables for Multi-Source Analysis
+
+1. **Industries Management**:
+   - `industries` - ICB industry codes and names from VNStock
+   - `post_mentioned_industries` - Links posts to industries with sentiment analysis
+   - `industry_daily_sentiment` - Daily aggregation of industry sentiment
+
+2. **Macro Economy Analysis**:
+   - `macro_categories` - High-level macro categories (monetary policy, global economy, etc.)
+   - `macro_themes` - Specific themes within categories (interest rates, market liquidity, etc.)
+   - `post_mentioned_macro_themes` - Links posts to macro themes with sentiment
+   - `macro_indicators` - Specific measurable indicators (VN Index forecast, GDP growth, etc.)
+   - `post_macro_indicators` - Actual indicator values mentioned in posts
+   - `macro_theme_daily_sentiment` - Daily aggregation of macro theme sentiment
+
+3. **Enhanced Stocks Table**:
+   - Added ICB codes (`icb_code1`, `icb_code2`, `icb_code3`, `icb_code4`)
+   - Added company type code (`com_type_code`)
+   - Enables automatic stock-industry mapping for contextual analysis
+
+4. **Source Type Management**:
+   - `sources` table enhanced with `source_type` field ('company', 'industry', 'macro_economy')
+   - Enables different analysis workflows per source type
+
+### Progress Tracking System
+
+- **Real-time Progress Updates**: `analysis_progress.py` provides step-by-step progress tracking
+- **10-Step Analysis Process**: From initialization through contextual enhancement to final results
+- **Error Tracking**: Captures and reports any issues during analysis
+- **Frontend Integration**: Progress bars and status updates for user experience
 
 ##Other documentation
 1. Database schema: We use Supabase as our database. The schema can be found in `schema.md'
 2. Available supabase views: We have some views in supabase to help us analyze the data. The views can be found in `views.md'. You can update this document when you add new or adjust existing views.
+3. Database updates: Execute `schema_updates.sql` to add new tables for industries and macro economy analysis
+
 ## Vietnamese Stock Analysis
 
 The system is specifically designed for Vietnamese financial markets:
@@ -129,4 +191,15 @@ The `test_helper.txt` file contains JavaScript snippets for configuring crawling
 
 ### VNSTOCK library
 
-Whenever we need functions related to stock info like getting company profile, prices, etc. we will use VNStock. Refer to vnstock.md to use pre-defined functions there 
+Whenever we need functions related to stock info like getting company profile, prices, etc. we will use VNStock. Refer to vnstock.md to use pre-defined functions there
+
+## System Workflow
+
+For detailed information about how the system works when users click "Start Analysis", including the complete step-by-step process and sequence diagrams, refer to `workflow.md`. This includes:
+- Frontend to backend communication flow
+- Database integration and smart deduplication 
+- Multi-source crawling and AI analysis process
+- Stock price and company data updates
+- Error handling and performance optimizations
+
+If there are any requests to adjust or understand the workflow, always refer to and update the workflow.md file accordingly. 

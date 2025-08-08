@@ -1,0 +1,215 @@
+// Database Design for Multi-Source Analysis System
+// Handles Company, Industry, and Macro Economy sources
+
+Project stockbot_enhanced {
+  database_type: 'PostgreSQL'
+  Note: 'Enhanced stockbot with Industry and Macro Economy analysis'
+}
+
+// ========== EXISTING CORE TABLES ==========
+
+Table sources {
+  id uuid [pk]
+  name varchar
+  base_url varchar
+  post_links_xpath varchar
+  content_xpath varchar
+  date_xpath varchar
+  source_type varchar [default: 'company'] // NEW: 'company', 'industry', 'macro_economy'
+  is_active boolean [default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table posts {
+  id uuid [pk]
+  source_id uuid [ref: > sources.id]
+  title varchar
+  content text
+  url varchar [unique]
+  published_date date
+  scraped_at timestamp
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table stocks {
+  symbol varchar [pk]
+  company_name varchar
+  exchange varchar
+  sector varchar
+  industry varchar
+  isvn30 boolean [default: false]
+  created_at timestamp
+  updated_at timestamp
+}
+
+// ========== EXISTING JUNCTION TABLES ==========
+
+Table post_mentioned_stocks {
+  id uuid [pk]
+  post_id uuid [ref: > posts.id]
+  stock_symbol varchar [ref: > stocks.symbol]
+  sentiment varchar // 'positive', 'negative', 'neutral'
+  summary text
+  confidence_score decimal
+  created_at timestamp
+}
+
+// ========== NEW: INDUSTRY ANALYSIS TABLES ==========
+
+Table industries {
+  id varchar [pk] // Use vnstock industry codes like 'Banking', 'Steel', etc.
+  name varchar
+  name_en varchar
+  sector varchar
+  description text
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Industries supported by vnstock library'
+}
+
+Table post_mentioned_industries {
+  id uuid [pk]
+  post_id uuid [ref: > posts.id]
+  industry_id varchar [ref: > industries.id]
+  sentiment varchar // 'positive', 'negative', 'neutral'
+  summary text
+  confidence_score decimal
+  created_at timestamp
+  
+  Note: 'Links posts to industries they discuss with sentiment'
+}
+
+// ========== NEW: MACRO ECONOMY ANALYSIS TABLES ==========
+
+Table macro_categories {
+  id varchar [pk] // e.g., 'monetary_policy', 'global_economy', 'market_conditions'
+  name varchar
+  name_en varchar
+  description text
+  created_at timestamp
+  
+  Note: 'High-level macro economic categories'
+}
+
+Table macro_themes {
+  id varchar [pk] // e.g., 'interest_rate_policy', 'trade_war_risk', 'market_liquidity'
+  category_id varchar [ref: > macro_categories.id]
+  name varchar
+  name_en varchar
+  description text
+  created_at timestamp
+  
+  Note: 'Specific macro economic themes within categories'
+}
+
+Table post_mentioned_macro_themes {
+  id uuid [pk]
+  post_id uuid [ref: > posts.id]
+  macro_theme_id varchar [ref: > macro_themes.id]
+  sentiment varchar // 'positive', 'negative', 'neutral'
+  summary text
+  confidence_score decimal
+  created_at timestamp
+  
+  Note: 'Links posts to macro themes they discuss'
+}
+
+// ========== MACRO INDICATORS & METRICS ==========
+
+Table macro_indicators {
+  id varchar [pk] // e.g., 'vn_index_range', 'corporate_profit_growth', 'inflation_rate'
+  theme_id varchar [ref: > macro_themes.id]
+  name varchar
+  name_en varchar
+  unit varchar // '%', 'points', 'billion_vnd', etc.
+  data_type varchar // 'percentage', 'range', 'absolute_value'
+  description text
+  created_at timestamp
+  
+  Note: 'Specific measurable macro indicators'
+}
+
+Table post_macro_indicators {
+  id uuid [pk]
+  post_id uuid [ref: > posts.id]
+  macro_indicator_id varchar [ref: > macro_indicators.id]
+  current_value varchar // Can store ranges like "1,350-1,500" or single values
+  projected_value varchar
+  time_period varchar // "Q1 2025", "2H2025", "2025", etc.
+  mentioned_context text
+  created_at timestamp
+  
+  Note: 'Actual indicator values mentioned in posts'
+}
+
+// ========== ENHANCED ANALYSIS VIEWS ==========
+
+// Daily sentiment aggregation for industries
+Table industry_daily_sentiment {
+  industry_id varchar [ref: > industries.id]
+  date date
+  positive_mentions integer
+  negative_mentions integer
+  neutral_mentions integer
+  overall_sentiment decimal // weighted average
+  post_count integer
+  created_at timestamp
+  
+  indexes {
+    (industry_id, date) [pk]
+  }
+}
+
+// Daily macro theme sentiment
+Table macro_theme_daily_sentiment {
+  macro_theme_id varchar [ref: > macro_themes.id]
+  date date
+  positive_mentions integer
+  negative_mentions integer
+  neutral_mentions integer
+  overall_sentiment decimal
+  post_count integer
+  created_at timestamp
+  
+  indexes {
+    (macro_theme_id, date) [pk]
+  }
+}
+
+// ========== CONTEXTUAL ANALYSIS HELPER TABLES ==========
+
+Table stock_industry_mapping {
+  stock_symbol varchar [ref: > stocks.symbol]
+  industry_id varchar [ref: > industries.id]
+  relevance_score decimal [default: 1.0]
+  created_at timestamp
+  
+  indexes {
+    (stock_symbol, industry_id) [pk]
+  }
+  
+  Note: 'Maps stocks to relevant industries for contextual analysis'
+}
+
+// ========== SAMPLE DATA EXAMPLES ==========
+
+// Macro Categories Examples:
+// - 'monetary_policy': 'Monetary Policy'
+// - 'global_economy': 'Global Economic Conditions' 
+// - 'market_conditions': 'Market Liquidity & Conditions'
+// - 'fiscal_policy': 'Government Fiscal Policy'
+
+// Macro Themes Examples:
+// - 'interest_rate_trends': 'Interest Rate Trends'
+// - 'trade_war_impact': 'Trade War Impact'
+// - 'market_liquidity': 'Market Liquidity Conditions'
+// - 'geopolitical_risk': 'Geopolitical Risk Factors'
+
+// Macro Indicators Examples:
+// - 'vn_index_forecast': 'VN Index Forecast Range'
+// - 'corporate_profit_growth': 'Corporate Profit Growth Rate'
+// - 'market_pe_ratio': 'Market P/E Ratio'
+// - 'gdp_growth_rate': 'GDP Growth Rate'
