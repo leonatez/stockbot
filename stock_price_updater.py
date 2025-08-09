@@ -7,6 +7,7 @@ It optimizes queries by only fetching data from the latest date in database to t
 
 import os
 import sys
+import time
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import pandas as pd
@@ -82,6 +83,9 @@ def fetch_stock_quotes(symbol: str, start_date: str, end_date: str) -> Optional[
         DataFrame with price data or None if error
     """
     try:
+        # Add delay to avoid rate limiting
+        time.sleep(1)  # 1 second delay between API calls
+        
         stock = Vnstock().stock(symbol=symbol, source='VCI')
         df = stock.quote.history(start=start_date, end=end_date, interval='1D')
         
@@ -93,7 +97,10 @@ def fetch_stock_quotes(symbol: str, start_date: str, end_date: str) -> Optional[
             return None
             
     except Exception as e:
-        print(f"  ✗ Error fetching quotes for {symbol}: {e}")
+        if "RetryError" in str(e) or "quota" in str(e).lower():
+            print(f"  ✗ VNStock quota exceeded for {symbol}. Skipping price update.")
+        else:
+            print(f"  ✗ Error fetching quotes for {symbol}: {e}")
         return None
 
 def save_stock_prices(symbol: str, price_df: pd.DataFrame, supabase: Client) -> bool:
@@ -270,6 +277,86 @@ def update_mentioned_stocks_prices(mentioned_stocks_data: List[Dict[str, Any]]) 
     print(f"📊 Found {len(stock_symbols)} unique stocks to update: {', '.join(stock_symbols)}")
     
     return update_stock_prices_for_symbols(stock_symbols)
+
+def update_stock_prices_selective(stock_symbols: List[str]) -> Dict[str, Any]:
+    """
+    Selective stock price update - only update prices for stocks that need updating
+    (i.e., stocks that don't have today's price data)
+    
+    Args:
+        stock_symbols: List of stock symbols to check and potentially update
+        
+    Returns:
+        Dict with update results
+    """
+    if not VNSTOCK_AVAILABLE:
+        return {"error": "VNStock not available"}
+    
+    try:
+        supabase = get_supabase_client()
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        stocks_to_update = []
+        stocks_skipped = []
+        
+        # Check which stocks need updates
+        for symbol in stock_symbols:
+            latest_date = get_latest_price_date(symbol, supabase)
+            
+            if latest_date == today:
+                print(f"  ✓ {symbol}: Already has today's price data, skipping")
+                stocks_skipped.append(symbol)
+            else:
+                print(f"  → {symbol}: Latest price date is {latest_date or 'never'}, needs update")
+                stocks_to_update.append(symbol)
+        
+        # Update only stocks that need it
+        results = {
+            "total_stocks": len(stock_symbols),
+            "stocks_updated": 0,
+            "stocks_skipped": len(stocks_skipped),
+            "stocks_failed": 0,
+            "details": {}
+        }
+        
+        if not stocks_to_update:
+            results["message"] = "All stocks already have current price data"
+            return results
+        
+        print(f"\nUpdating prices for {len(stocks_to_update)} stocks that need updates...")
+        
+        for symbol in stocks_to_update:
+            try:
+                latest_date = get_latest_price_date(symbol, supabase)
+                start_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d') if not latest_date else latest_date
+                end_date = today
+                
+                # Fetch and save price data
+                price_df = fetch_stock_quotes(symbol, start_date, end_date)
+                
+                if price_df is not None:
+                    success = save_stock_prices(symbol, price_df, supabase)
+                    if success:
+                        results["stocks_updated"] += 1
+                        results["details"][symbol] = "Updated successfully"
+                    else:
+                        results["stocks_failed"] += 1
+                        results["details"][symbol] = "Failed to save to database"
+                else:
+                    results["stocks_failed"] += 1
+                    results["details"][symbol] = "Failed to fetch price data"
+                    
+            except Exception as e:
+                print(f"  ✗ Error updating {symbol}: {e}")
+                results["stocks_failed"] += 1
+                results["details"][symbol] = f"Error: {str(e)}"
+        
+        results["message"] = f"Updated {results['stocks_updated']} stocks, skipped {results['stocks_skipped']}, failed {results['stocks_failed']}"
+        return results
+        
+    except Exception as e:
+        print(f"Error in selective price update: {e}")
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     # Test with sample symbols

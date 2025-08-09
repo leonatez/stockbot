@@ -387,6 +387,38 @@ class DatabaseService:
 
     # ===== QUERY METHODS =====
     
+    async def get_stocks_mentioned_in_last_n_days(self, days: int = 7) -> List[str]:
+        """
+        Get all unique stock symbols mentioned in posts from the last N days
+        
+        Args:
+            days: Number of days to look back
+            
+        Returns:
+            List of stock symbols
+        """
+        try:
+            cutoff_date = (datetime.now() - timedelta(days=days)).date()
+            
+            # Query posts and their mentioned stocks from last N days
+            result = self.supabase.table("posts") \
+                .select("post_mentioned_stocks(stocks(symbol))") \
+                .gte("created_date", cutoff_date.isoformat()) \
+                .execute()
+            
+            # Extract unique stock symbols
+            stock_symbols = set()
+            for post in result.data:
+                for mention in post.get("post_mentioned_stocks", []):
+                    if mention.get("stocks") and mention["stocks"].get("symbol"):
+                        stock_symbols.add(mention["stocks"]["symbol"])
+            
+            return list(stock_symbols)
+            
+        except Exception as e:
+            print(f"Error getting stocks mentioned in last {days} days: {e}")
+            return []
+    
     async def get_dashboard_stats(self) -> Dict[str, Any]:
         """Get dashboard statistics using the database views"""
         try:

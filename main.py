@@ -46,7 +46,7 @@ app.add_middleware(
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-pro")
+model = genai.GenerativeModel("gemini-2.5-pro")
 
 
 # Global driver pool
@@ -125,7 +125,7 @@ def create_stealth_driver():
         # Only add advanced stealth options if they're supported
         try:
             # Test if these options are supported
-            chrome_options.add_experimental_option('excludeSwitches', ['load-extension', 'enable-automation'])
+            options.add_experimental_option('excludeSwitches', ['load-extension', 'enable-automation'])
             options.add_experimental_option('useAutomationExtension', False)
             print("Advanced stealth options added successfully")
         except Exception as e:
@@ -135,13 +135,13 @@ def create_stealth_driver():
         
         print("Creating undetected Chrome driver (headless mode)...")
         
-        # Try to create driver with automatic version detection
+        # Try to create driver with correct Chrome version
         try:
-            driver = uc.Chrome(options=options, version_main=None)
-            print("Chrome driver created successfully with auto-detection!")
+            driver = uc.Chrome(options=options, version_main=137)
+            print("Chrome driver created successfully with version 137!")
         except Exception as e:
-            print(f"Auto-detection failed: {e}")
-            # Try with specific version detection disabled
+            print(f"Version 137 failed: {e}")
+            # Try with automatic version detection as fallback
             driver = uc.Chrome(options=options, version_main=None, driver_executable_path=None, use_subprocess=True)
             print("Chrome driver created with subprocess method!")
         
@@ -196,8 +196,8 @@ def create_stealth_driver():
             prefs = {"profile.managed_default_content_settings.images": 2}
             options.add_experimental_option("prefs", prefs)
             
-            driver = uc.Chrome(options=options)
-            print("Chrome driver created with minimal headless options!")
+            driver = uc.Chrome(options=options, version_main=137)
+            print("Chrome driver created with minimal headless options and version 137!")
             return driver
             
         except Exception as e2:
@@ -828,6 +828,10 @@ async def crawl_endpoint(request: CrawlRequest):
                     elif isinstance(gemini_result, list):
                         mentioned_stocks_data = gemini_result
                     
+                    print(f"DEBUG: Gemini result type: {type(gemini_result)}")
+                    print(f"DEBUG: Gemini result: {gemini_result}")
+                    print(f"DEBUG: Extracted mentioned_stocks_data: {mentioned_stocks_data}")
+                    
                     # Create post object
                     post_object = {
                         "url": post['url'],
@@ -841,6 +845,7 @@ async def crawl_endpoint(request: CrawlRequest):
                     
                     # Save new post and analysis to database
                     if mentioned_stocks_data:
+                        print(f"DEBUG: Attempting to save post to database with {len(mentioned_stocks_data)} stocks")
                         try:
                             post_summary = gemini_result.get('post_summary', '') if isinstance(gemini_result, dict) else ''
                             await db_service.save_post_with_analysis(post, source_id, mentioned_stocks_data, post_summary)
@@ -848,6 +853,8 @@ async def crawl_endpoint(request: CrawlRequest):
                         except Exception as db_error:
                             print(f"✗ Error saving to database: {db_error}")
                             # Continue processing even if database save fails
+                    else:
+                        print(f"DEBUG: No stocks found in analysis, skipping database save")
                     
                     # Add stock mentions to post object
                     for stock_data in mentioned_stocks_data:
@@ -1165,6 +1172,10 @@ async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
                             elif isinstance(gemini_result, list):
                                 mentioned_stocks_data = gemini_result
                             
+                            print(f"DEBUG: Multi-source Gemini result type: {type(gemini_result)}")
+                            print(f"DEBUG: Multi-source Gemini result: {gemini_result}")
+                            print(f"DEBUG: Multi-source mentioned_stocks_data: {mentioned_stocks_data}")
+                            
                             # Create post object with source information
                             post_object = {
                                 "url": post['url'],
@@ -1179,12 +1190,15 @@ async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
                             
                             # Save new post and analysis to database
                             if mentioned_stocks_data:
+                                print(f"DEBUG: Multi-source attempting to save post to database with {len(mentioned_stocks_data)} stocks")
                                 try:
                                     post_summary = gemini_result.get('post_summary', '') if isinstance(gemini_result, dict) else ''
                                     await db_service.save_post_with_analysis(post, source_id, mentioned_stocks_data, post_summary)
                                     print(f"✓ Post and analysis saved to database")
                                 except Exception as db_error:
                                     print(f"✗ Error saving to database: {db_error}")
+                            else:
+                                print(f"DEBUG: Multi-source no stocks found in analysis, skipping database save")
                             
                             # Add stock mentions to post object
                             for stock_data in mentioned_stocks_data:
@@ -1976,6 +1990,43 @@ async def update_industries_table():
         import traceback
         print(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Industries update failed: {str(e)}")
+
+@app.post("/stock-prices/update")
+async def update_stock_prices_manual():
+    """Manual update of stock prices for stocks mentioned in last 7 days"""
+    try:
+        # Get all stocks mentioned in last 7 days
+        print("Getting stocks mentioned in last 7 days...")
+        mentioned_stocks = await db_service.get_stocks_mentioned_in_last_n_days(7)
+        
+        if not mentioned_stocks:
+            return JSONResponse(content={
+                "success": False,
+                "message": "No stocks found mentioned in last 7 days"
+            })
+        
+        print(f"Found {len(mentioned_stocks)} stocks mentioned in last 7 days")
+        
+        # Import the stock price updater
+        from stock_price_updater import update_stock_prices_selective
+        
+        # Update prices only for stocks that need updates
+        result = update_stock_prices_selective(mentioned_stocks)
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Price update completed",
+            "details": result
+        })
+        
+    except Exception as e:
+        print(f"Error in manual stock price update: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(content={
+            "success": False,
+            "message": f"Failed to update stock prices: {str(e)}"
+        }, status_code=500)
 
 @app.post("/company-events/update")
 async def update_all_company_events():
