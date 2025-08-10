@@ -83,7 +83,7 @@ QTP công bố kết quả kinh doanh (KQKD) Q2/2025 với doanh thu đạt 2.91
 Sản lượng điện Q2/2025 đạt gần 2,0 tỷ kWh, -1,9% svck, doanh thu giảm 21,1% svck, do ảnh hưởng cộng hưởng từ giá bán bình quân giảm 19,5% svck, đạt bình quân 1.442 đồng/kWh. Nguyên nhân do ảnh hưởng chung từ giá bán điện toàn phần (FMP) sụt giảm trên thị trường cạnh tranh. Cụ thể, giá FMP Q2/2025 bình quân đạt 1.317 đồng/kWh, -9,0% svck. Tuy nhiên, lãi gộp tăng 26,5% svck, lên 267 tỷ đồng và biên lãi gộp cải thiện từ 5,8% cùng kỳ lên 9,3%, nhờ tiết giảm được nhiều chi phí, chủ yếu là chi phí nguyên liệu đầu vào (than) giảm mạnh. Cụ thể, chi phí nguyên liệu ghi nhận 2.248 tỷ đồng, -25,3% svck. Nhờ đó, LNST đạt 190 tỷ đồng, +18,0% svck, biên lãi ròng cải thiện lên 6,6% từ 4,4% cùng kỳ. Lũy kế 6T2025, sản lượng đạt gần 3,8 tỷ kWh, -1,0% svck, doanh thu đạt 6.638 tỷ đồng, -13,0% svck, LNST đạt 388 tỷ đồng, -6,4% svck, biên lãi ròng cải thiện từ 5,8% cùng kỳ lên 6,3%.
 
 """
-print(analyze_with_gemini(all_posts_content))
+# print(analyze_with_gemini(all_posts_content))  # Commented out to prevent auto-execution
 
 # test = """
 # ```json

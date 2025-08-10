@@ -39,15 +39,19 @@ class DatabaseService:
                 "xpath_title": source_data.get("xpath"),  # XPath for finding post links
                 "xpath_content": source_data.get("contentXpath"),  # XPath for post content
                 "xpath_date": source_data.get("contentDateXpath"),  # XPath for post date
-                "source_type": source_data.get("sourceType", "Company"),  # Source classification
+                "source_type": source_data.get("sourceType", "company"),  # Source classification (lowercase)
                 "pagination_rule": source_data.get("pagination"),  # Pagination pattern
+                "content_type": source_data.get("contentType", "text"),  # Content type (text/pdf)
                 "status": "active",
                 "created_at": datetime.now().isoformat()
             }
             
-            print(f"Saving source to database: {db_source['name']} - {db_source['url']} ({db_source['source_type']})")
+            print(f"Saving source to database: {db_source['name']} - {db_source['url']} ({db_source['source_type']}) - content_type: {db_source['content_type']}")
             
-            result = self.supabase.table("sources").insert(db_source).execute()
+            # Temporarily remove content_type from insert until column is added to database
+            db_source_for_insert = {k: v for k, v in db_source.items() if k != 'content_type'}
+            
+            result = self.supabase.table("sources").insert(db_source_for_insert).execute()
             
             if result.data:
                 print(f"✓ Source '{source_data.get('sourceName')}' saved to database with ID: {db_source['id']}")
@@ -111,14 +115,18 @@ class DatabaseService:
                 "xpath_title": source_data.get("xpath"),
                 "xpath_content": source_data.get("contentXpath"),
                 "xpath_date": source_data.get("contentDateXpath"),
-                "source_type": source_data.get("sourceType", "Company"),
+                "source_type": source_data.get("sourceType", "company"),
+                "content_type": source_data.get("contentType", "text"),
                 "pagination_rule": source_data.get("pagination")
             }
             
-            print(f"Updating source {source_id}: {db_update['name']} - {db_update['url']}")
+            print(f"Updating source {source_id}: {db_update['name']} - {db_update['url']} - content_type: {db_update['content_type']}")
+            
+            # Temporarily remove content_type from update until column is added to database
+            db_update_for_db = {k: v for k, v in db_update.items() if k != 'content_type'}
             
             # Update the source
-            result = self.supabase.table("sources").update(db_update).eq("id", source_id).execute()
+            result = self.supabase.table("sources").update(db_update_for_db).eq("id", source_id).execute()
             
             if result.data:
                 print(f"✓ Source '{source_data.get('sourceName')}' (ID: {source_id}) updated successfully")
@@ -279,11 +287,12 @@ class DatabaseService:
             raise e
 
     async def _save_stock_mention(self, post_id: str, stock_analysis: Dict[str, Any], post_date: date):
-        """Save individual stock mention and analysis"""
+        """Save individual stock mention and analysis with structured analysis data"""
         try:
             stock_symbol = stock_analysis.get("stock_symbol")
             sentiment = stock_analysis.get("sentiment", "neutral")
             summary = stock_analysis.get("summary", "")
+            structured_analysis = stock_analysis.get("structured_analysis", {})
             
             if not stock_symbol:
                 return
@@ -291,19 +300,27 @@ class DatabaseService:
             # Get or create stock
             stock_id = await self._get_or_create_stock(stock_symbol)
             
-            # Insert post mention
+            # Insert post mention with structured analysis
             mention_data = {
                 "id": str(uuid.uuid4()),
                 "post_id": post_id,
                 "stock_id": stock_id,
                 "sentiment": sentiment,
-                "summary": summary
+                "summary": summary,
+                "structured_analysis": structured_analysis,
+                "ket_qua_kinh_doanh_quy": structured_analysis.get("ket_qua_kinh_doanh_quy", {}),
+                "luy_ke_6t_nam": structured_analysis.get("luy_ke_6t_nam", {}),
+                "phan_tich_mang_kinh_doanh": structured_analysis.get("phan_tich_mang_kinh_doanh", {}),
+                "tai_chinh_dong_tien": structured_analysis.get("tai_chinh_dong_tien", {}),
+                "trien_vong": structured_analysis.get("trien_vong", {}),
+                "rui_ro": structured_analysis.get("rui_ro", {}),
+                "dinh_gia_khuyen_nghi": structured_analysis.get("dinh_gia_khuyen_nghi", {})
             }
             
             mention_result = self.supabase.table("post_mentioned_stocks").insert(mention_data).execute()
             
             if mention_result.data:
-                print(f"✓ Stock mention saved: {stock_symbol} ({sentiment})")
+                print(f"✓ Stock mention saved with structured analysis: {stock_symbol} ({sentiment})")
                 
                 # Update daily sentiment aggregation
                 await self._update_daily_sentiment(stock_id, post_date, sentiment, summary, post_id)
@@ -1003,6 +1020,72 @@ class DatabaseService:
             
         except Exception as e:
             print(f"✗ Error getting company additional info for {stock_symbol}: {e}")
+            return {}
+
+    async def get_stock_structured_analysis(self, stock_symbol: str, post_url: str) -> Dict[str, Any]:
+        """
+        Get detailed structured analysis for a specific stock mention in a specific post
+        
+        Args:
+            stock_symbol: Stock symbol (e.g., 'ACB')
+            post_url: URL of the post containing the analysis
+            
+        Returns:
+            Dictionary containing structured analysis data
+        """
+        try:
+            # Get post ID from URL
+            post_result = self.supabase.table("posts").select("id").eq("url", post_url).execute()
+            
+            if not post_result.data:
+                return {}
+            
+            post_id = post_result.data[0]["id"]
+            
+            # Get stock ID from symbol
+            stock_result = self.supabase.table("stocks").select("id").eq("symbol", stock_symbol).execute()
+            
+            if not stock_result.data:
+                return {}
+            
+            stock_id = stock_result.data[0]["id"]
+            
+            # Get structured analysis for this stock in this post
+            analysis_result = self.supabase.table("post_mentioned_stocks").select("""
+                structured_analysis,
+                ket_qua_kinh_doanh_quy,
+                luy_ke_6t_nam,
+                phan_tich_mang_kinh_doanh,
+                tai_chinh_dong_tien,
+                trien_vong,
+                rui_ro,
+                dinh_gia_khuyen_nghi,
+                sentiment,
+                summary
+            """).eq("post_id", post_id).eq("stock_id", stock_id).execute()
+            
+            if not analysis_result.data:
+                return {}
+            
+            analysis_data = analysis_result.data[0]
+            
+            return {
+                "stock_symbol": stock_symbol,
+                "sentiment": analysis_data.get("sentiment"),
+                "summary": analysis_data.get("summary"),
+                "structured_analysis": {
+                    "ket_qua_kinh_doanh_quy": analysis_data.get("ket_qua_kinh_doanh_quy", {}),
+                    "luy_ke_6t_nam": analysis_data.get("luy_ke_6t_nam", {}),
+                    "phan_tich_mang_kinh_doanh": analysis_data.get("phan_tich_mang_kinh_doanh", {}),
+                    "tai_chinh_dong_tien": analysis_data.get("tai_chinh_dong_tien", {}),
+                    "trien_vong": analysis_data.get("trien_vong", {}),
+                    "rui_ro": analysis_data.get("rui_ro", {}),
+                    "dinh_gia_khuyen_nghi": analysis_data.get("dinh_gia_khuyen_nghi", {})
+                }
+            }
+            
+        except Exception as e:
+            print(f"✗ Error getting structured analysis for {stock_symbol} in {post_url}: {e}")
             return {}
 
 # Global database service instance

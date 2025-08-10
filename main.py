@@ -28,6 +28,10 @@ from database import db_service
 from daily_vn30_update import daily_vn30_update
 from stock_price_updater import update_mentioned_stocks_prices
 from company_info_updater import update_company_information
+import tempfile
+from urllib.parse import urljoin, urlparse
+import requests
+from markitdown import MarkItDown
 
 
 load_dotenv()
@@ -272,10 +276,12 @@ class CrawlRequest(BaseModel):
     pagination: Optional[str] = None
     contentXpath: str
     contentDateXpath: str
+    contentType: Optional[str] = "text"  # "text" or "pdf"
 
 class MultipleCrawlRequest(BaseModel):
     sources: List[CrawlRequest]
     days: Optional[int] = 3  # Default to 3 days if not specified
+    debug: Optional[bool] = False  # Debug mode: crawl only 1 valid post
 
 class StockAnalysis(BaseModel):
     stock_symbol: str
@@ -575,7 +581,116 @@ def extract_text_content(tree: html.HtmlElement, xpath: str) -> str:
         print(f"Error extracting content with xpath '{xpath}': {e}")
         return ""
 
-async def crawl_posts(request: CrawlRequest, days: int = 3) -> tuple[List[dict], int]:
+def extract_pdf_link(tree: html.HtmlElement, xpath: str) -> str:
+    """Extract PDF download link using xpath"""
+    try:
+        elements = tree.xpath(xpath)
+        if elements:
+            if isinstance(elements[0], html.HtmlElement):
+                # Check if it's a link element with href
+                href = elements[0].get('href')
+                if href:
+                    return href
+                # Otherwise get text content (might be a direct URL)
+                return elements[0].text_content().strip()
+            else:
+                return str(elements[0]).strip()
+        return ""
+    except Exception as e:
+        print(f"Error extracting PDF link with xpath '{xpath}': {e}")
+        return ""
+
+def download_pdf_from_url(pdf_url: str, base_url: str = None) -> Optional[str]:
+    """Download PDF from URL and return local path"""
+    try:
+        # Handle relative URLs
+        if base_url and not pdf_url.startswith(('http://', 'https://')):
+            pdf_url = urljoin(base_url, pdf_url)
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        print(f"Downloading PDF from: {pdf_url}")
+        response = requests.get(pdf_url, headers=headers, stream=True, timeout=30)
+        response.raise_for_status()
+        
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                tmp_file.write(chunk)
+            temp_path = tmp_file.name
+        
+        print(f"PDF downloaded to: {temp_path}")
+        return temp_path
+        
+    except Exception as e:
+        print(f"Error downloading PDF: {e}")
+        return None
+
+def convert_pdf_to_markdown(pdf_path: str) -> Optional[str]:
+    """Convert PDF to markdown using MarkItDown"""
+    try:
+        print(f"Converting PDF to markdown: {pdf_path}")
+        
+        # Initialize MarkItDown
+        md = MarkItDown()
+        
+        # Convert PDF to markdown
+        result = md.convert(pdf_path)
+        
+        if not result or not result.text_content:
+            print("MarkItDown conversion failed or returned empty content")
+            return None
+        
+        markdown_content = result.text_content
+        print(f"PDF converted to markdown successfully ({len(markdown_content)} characters)")
+        
+        # Clean up temporary file
+        try:
+            os.unlink(pdf_path)
+        except:
+            pass
+        
+        return markdown_content
+        
+    except Exception as e:
+        print(f"Error converting PDF to markdown: {e}")
+        # Clean up temporary file on error
+        try:
+            os.unlink(pdf_path)
+        except:
+            pass
+        return None
+
+def process_pdf_content(tree: html.HtmlElement, xpath: str, base_url: str = None) -> str:
+    """Extract PDF link, download and convert to markdown"""
+    try:
+        # Extract PDF URL
+        pdf_url = extract_pdf_link(tree, xpath)
+        if not pdf_url:
+            print("No PDF URL found")
+            return ""
+        
+        # Download PDF
+        pdf_path = download_pdf_from_url(pdf_url, base_url)
+        if not pdf_path:
+            print("Failed to download PDF")
+            return ""
+        
+        # Convert to markdown
+        markdown_content = convert_pdf_to_markdown(pdf_path)
+        if not markdown_content:
+            print("Failed to convert PDF to markdown")
+            return ""
+        
+        return markdown_content
+        
+    except Exception as e:
+        print(f"Error processing PDF content: {e}")
+        return ""
+
+async def crawl_posts(request: CrawlRequest, days: int = 3, debug: bool = False) -> tuple[List[dict], int]:
     """Crawl posts and return those within specified days using Selenium"""
     collected_posts = []
     total_posts_found = 0
@@ -583,7 +698,10 @@ async def crawl_posts(request: CrawlRequest, days: int = 3) -> tuple[List[dict],
     
     # Use date-only comparison to include entire days
     target_date_ago = (datetime.now().date() - timedelta(days=days))
-    print(f"Crawling posts from the last {days} days (since {target_date_ago.strftime('%d/%m/%Y')})")
+    if debug:
+        print(f"🐛 DEBUG MODE: Crawling only 1 valid post from the last {days} days (since {target_date_ago.strftime('%d/%m/%Y')})")
+    else:
+        print(f"Crawling posts from the last {days} days (since {target_date_ago.strftime('%d/%m/%Y')})")
     
     while True:
         # Construct URL for current page
@@ -691,6 +809,11 @@ async def crawl_posts(request: CrawlRequest, days: int = 3) -> tuple[List[dict],
                                 'content': existing_post_data['content'],
                                 'existing_data': existing_post_data  # Mark as existing for later processing
                             })
+                            
+                            # In debug mode, exit after collecting the first valid post (even if from database)
+                            if debug:
+                                print(f"🐛 DEBUG MODE: Collected 1 post from database, stopping crawl")
+                                return collected_posts, total_posts_found
                         continue
                     
                     print(f"✓ Post not in database, fetching fresh content from: {post_url}")
@@ -700,7 +823,11 @@ async def crawl_posts(request: CrawlRequest, days: int = 3) -> tuple[List[dict],
                     
                     post_tree = get_page_content_with_selenium(post_url)
                     if post_tree:
-                        content = extract_text_content(post_tree, request.contentXpath)
+                        # Check content type and extract accordingly
+                        if hasattr(request, 'contentType') and request.contentType == 'pdf':
+                            content = process_pdf_content(post_tree, request.contentXpath, request.url)
+                        else:
+                            content = extract_text_content(post_tree, request.contentXpath)
                         
                         if content and len(content) > 100:
                             post_data = {
@@ -711,6 +838,11 @@ async def crawl_posts(request: CrawlRequest, days: int = 3) -> tuple[List[dict],
                             collected_posts.append(post_data)
                             print(f"✓ Successfully collected new post from {post_date.strftime('%d/%m/%Y')}")
                             print(f"Content preview: {content[:200]}...")
+                            
+                            # In debug mode, exit after collecting the first valid post
+                            if debug:
+                                print(f"🐛 DEBUG MODE: Collected 1 post, stopping crawl")
+                                return collected_posts, total_posts_found
                         else:
                             print(f"Content too short or empty for post: {post_url}")
                     else:
@@ -818,8 +950,11 @@ async def crawl_endpoint(request: CrawlRequest):
                     ]
                 else:
                     print(f"✓ Running fresh AI analysis for new post")
-                    # Analyze individual post with Gemini
-                    gemini_result = analyze_individual_post_with_gemini(post['content'])
+                    # Analyze individual post with Gemini - use PDF analysis for PDF content
+                    if hasattr(request, 'contentType') and request.contentType == 'pdf':
+                        gemini_result = analyze_pdf_report_with_gemini(post['content'])
+                    else:
+                        gemini_result = analyze_individual_post_with_gemini(post['content'])
                     
                     # Handle different response formats from Gemini
                     mentioned_stocks_data = []
@@ -848,8 +983,18 @@ async def crawl_endpoint(request: CrawlRequest):
                         print(f"DEBUG: Attempting to save post to database with {len(mentioned_stocks_data)} stocks")
                         try:
                             post_summary = gemini_result.get('post_summary', '') if isinstance(gemini_result, dict) else ''
-                            await db_service.save_post_with_analysis(post, source_id, mentioned_stocks_data, post_summary)
-                            print(f"✓ Post and analysis saved to database")
+                            
+                            # Add structured_analysis to each stock mention
+                            structured_analysis = gemini_result.get('structured_analysis', {}) if isinstance(gemini_result, dict) else {}
+                            enriched_stocks_data = []
+                            for stock_data in mentioned_stocks_data:
+                                if isinstance(stock_data, dict):
+                                    enriched_stock = stock_data.copy()
+                                    enriched_stock['structured_analysis'] = structured_analysis
+                                    enriched_stocks_data.append(enriched_stock)
+                            
+                            await db_service.save_post_with_analysis(post, source_id, enriched_stocks_data, post_summary)
+                            print(f"✓ Post and analysis with structured data saved to database")
                         except Exception as db_error:
                             print(f"✗ Error saving to database: {db_error}")
                             # Continue processing even if database save fails
@@ -1008,6 +1153,132 @@ async def crawl_endpoint(request: CrawlRequest):
         raise HTTPException(status_code=500, detail=f"Crawling failed: {str(e)}")
 
 
+def analyze_pdf_report_with_gemini(content: str) -> Dict:
+    """
+    Analyze PDF financial report content with structured table format
+    """
+    if not model or not content.strip():
+        print("Gemini model not available or no content to analyze")
+        return {"post_summary": "", "mentioned_stocks": []}
+    
+    try:
+        prompt = f"""
+        Bạn là chuyên gia phân tích tài chính. Hãy đọc báo cáo phân tích cổ phiếu và tóm tắt thành bảng theo đúng cấu trúc dưới đây.  
+        Chỉ lấy thông tin từ báo cáo, không tự suy diễn.  
+        Phải bao gồm cả yếu tố tích cực và tiêu cực, không được bỏ sót.  
+        Không viết nhận định chung chung, hãy cụ thể hóa số liệu và nguyên nhân.  
+        Các tỷ lệ % cần ghi kèm dấu % và chỉ rõ so sánh với kỳ nào (YoY hoặc QoQ).  
+
+        Chỉ trả lời theo đúng format JSON phía dưới, tuyệt đối không nói gì ngoài JSON này:
+        {{
+            "post_summary": "Tóm tắt ngắn gọn báo cáo",
+            "mentioned_stocks": [
+                {{
+                    "stock_symbol": "SYMBOL",
+                    "sentiment": "positive/negative/neutral",
+                    "summary": "Phân tích chi tiết"
+                }}
+            ],
+            "structured_analysis": {{
+                "ket_qua_kinh_doanh_quy": {{
+                    "doanh_thu": "",
+                    "loi_nhuan_gop": "",
+                    "bien_loi_nhuan_gop": "",
+                    "lnst": "",
+                    "bien_lnst": "",
+                    "thay_doi_yoy": "",
+                    "thay_doi_qoq": "",
+                    "nguyen_nhan_tich_cuc": "",
+                    "nguyen_nhan_tieu_cuc": "",
+                    "yeu_to_bat_thuong": ""
+                }},
+                "luy_ke_6t_nam": {{
+                    "doanh_thu": "",
+                    "lnst": "",
+                    "thay_doi_yoy": "",
+                    "hoan_thanh_ke_hoach": ""
+                }},
+                "phan_tich_mang_kinh_doanh": {{
+                    "ty_trong_doanh_thu": "",
+                    "ty_trong_loi_nhuan": "",
+                    "xu_huong_cac_mang": ""
+                }},
+                "tai_chinh_dong_tien": {{
+                    "tien_mat": "",
+                    "cac_khoan_phai_thu": "",
+                    "hang_ton_kho": "",
+                    "tai_san_do_dang": "",
+                    "no_vay": "",
+                    "dong_tien_hoat_dong": "",
+                    "dong_tien_dau_tu": "",
+                    "dong_tien_tai_chinh": "",
+                    "chi_so_an_toan": ""
+                }},
+                "trien_vong": {{
+                    "yeu_to_ho_tro_ngan_han": "",
+                    "yeu_to_ho_tro_dai_han": "",
+                    "ke_hoach_du_an": "",
+                    "du_bao_doanh_thu": "",
+                    "du_bao_lnst": "",
+                    "du_bao_eps": "",
+                    "du_bao_roe": ""
+                }},
+                "rui_ro": {{
+                    "rui_ro_thi_truong": "",
+                    "rui_ro_nguyen_lieu": "",
+                    "rui_ro_phap_ly": "",
+                    "rui_ro_canh_tranh": ""
+                }},
+                "dinh_gia_khuyen_nghi": {{
+                    "pe_forward": "",
+                    "pb_forward": "",
+                    "quan_diem": "",
+                    "ly_do": ""
+                }}
+            }}
+        }}
+
+        Nội dung báo cáo:
+        {content}
+        """
+        
+        print("Sending PDF report to Gemini for structured analysis...")
+        response = model.generate_content(prompt)
+        
+        if response and response.text:
+            print("Received structured PDF analysis from Gemini")
+            
+            # Clean the response text
+            response_text = response.text.replace("```json", "").replace("```", "").strip()
+            
+            try:
+                # Look for JSON object in the response
+                start_idx = response_text.find('{')
+                end_idx = response_text.rfind('}') + 1
+                
+                if start_idx != -1 and end_idx != -1:
+                    json_str = response_text[start_idx:end_idx]
+                    analysis_result = json.loads(json_str)
+                    
+                    print(f"Successfully parsed structured PDF analysis")
+                    return analysis_result
+                else:
+                    print("Could not find valid JSON in PDF analysis response")
+                    return {"post_summary": "", "mentioned_stocks": []}
+                    
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error in PDF analysis: {e}")
+                print(f"Response text: {response_text[:500]}...")
+                return {"post_summary": "", "mentioned_stocks": []}
+                
+        else:
+            print("No response from Gemini for PDF analysis")
+            return {"post_summary": "", "mentioned_stocks": []}
+            
+    except Exception as e:
+        print(f"Error in PDF analysis with Gemini: {e}")
+        return {"post_summary": "", "mentioned_stocks": []}
+
 def analyze_individual_post_with_gemini(content: str) -> Dict:
     """
     Analyze individual post content with Gemini to extract both post summary and stock mentions
@@ -1018,30 +1289,88 @@ def analyze_individual_post_with_gemini(content: str) -> Dict:
     
     try:
         prompt = f"""
-        You are a Vietnamese stock investment consultant. Analyze the following financial news content.
-        
-        Provide your analysis in this EXACT JSON format:
+        Bạn là chuyên gia phân tích tài chính. Hãy đọc nội dung tin tức tài chính và phân tích theo đúng cấu trúc dưới đây.  
+        Chỉ lấy thông tin từ nội dung, không tự suy diễn.  
+        Phải bao gồm cả yếu tố tích cực và tiêu cực, không được bỏ sót.  
+        Không viết nhận định chung chung, hãy cụ thể hóa số liệu và nguyên nhân.  
+        Các tỷ lệ % cần ghi kèm dấu % và chỉ rõ so sánh với kỳ nào (YoY hoặc QoQ).  
+
+        Chỉ trả lời theo đúng format JSON phía dưới, tuyệt đối không nói gì ngoài JSON này:
         {{
-            "post_summary": "Brief summary of the main points of this financial news article in Vietnamese (2-3 sentences)",
+            "post_summary": "Tóm tắt ngắn gọn nội dung tin tức",
             "mentioned_stocks": [
                 {{
                     "stock_symbol": "SYMBOL",
-                    "sentiment": "positive/negative/neutral", 
-                    "summary": "How this stock was mentioned and what affects it"
+                    "sentiment": "positive/negative/neutral",
+                    "summary": "Phân tích chi tiết"
                 }}
-            ]
+            ],
+            "structured_analysis": {{
+                "ket_qua_kinh_doanh_quy": {{
+                    "doanh_thu": "",
+                    "loi_nhuan_gop": "",
+                    "bien_loi_nhuan_gop": "",
+                    "lnst": "",
+                    "bien_lnst": "",
+                    "thay_doi_yoy": "",
+                    "thay_doi_qoq": "",
+                    "nguyen_nhan_tich_cuc": "",
+                    "nguyen_nhan_tieu_cuc": "",
+                    "yeu_to_bat_thuong": ""
+                }},
+                "luy_ke_6t_nam": {{
+                    "doanh_thu": "",
+                    "lnst": "",
+                    "thay_doi_yoy": "",
+                    "hoan_thanh_ke_hoach": ""
+                }},
+                "phan_tich_mang_kinh_doanh": {{
+                    "ty_trong_doanh_thu": "",
+                    "ty_trong_loi_nhuan": "",
+                    "xu_huong_cac_mang": ""
+                }},
+                "tai_chinh_dong_tien": {{
+                    "tien_mat": "",
+                    "cac_khoan_phai_thu": "",
+                    "hang_ton_kho": "",
+                    "tai_san_do_dang": "",
+                    "no_vay": "",
+                    "dong_tien_hoat_dong": "",
+                    "dong_tien_dau_tu": "",
+                    "dong_tien_tai_chinh": "",
+                    "chi_so_an_toan": ""
+                }},
+                "trien_vong": {{
+                    "yeu_to_ho_tro_ngan_han": "",
+                    "yeu_to_ho_tro_dai_han": "",
+                    "ke_hoach_du_an": "",
+                    "du_bao_doanh_thu": "",
+                    "du_bao_lnst": "",
+                    "du_bao_eps": "",
+                    "du_bao_roe": ""
+                }},
+                "rui_ro": {{
+                    "rui_ro_thi_truong": "",
+                    "rui_ro_nguyen_lieu": "",
+                    "rui_ro_phap_ly": "",
+                    "rui_ro_canh_tranh": ""
+                }},
+                "dinh_gia_khuyen_nghi": {{
+                    "pe_forward": "",
+                    "pb_forward": "",
+                    "quan_diem": "",
+                    "ly_do": ""
+                }}
+            }}
         }}
-        
-        Rules:
-        1. post_summary: Summarize the key financial news in Vietnamese (2-3 sentences)
-        2. mentioned_stocks: Only include actual Vietnamese stock symbols (HPG, VPB, ACB, etc.)
-        3. sentiment: Determine if the news is positive, negative, or neutral for each stock
-        4. summary: Brief explanation of how the stock was mentioned
-        5. Return ONLY valid JSON, no other text
-        6. If no stocks mentioned, use empty array for mentioned_stocks
-        7. Always write in Vietnamese
-        
-        Content to analyze:
+
+        Lưu ý:
+        - Chỉ đưa ra thông tin có trong nội dung, không tự suy diễn
+        - Nếu không có thông tin cho trường nào thì để trống ""
+        - mentioned_stocks chỉ bao gồm các mã cổ phiếu Việt Nam thực sự (HPG, VPB, ACB, v.v.)
+        - Trả về JSON hợp lệ, không có text nào khác
+
+        Nội dung phân tích:
         {content}
         """
         
@@ -1065,26 +1394,30 @@ def analyze_individual_post_with_gemini(content: str) -> Dict:
                     
                     # Ensure we have the expected structure
                     if "post_summary" in analysis_result and "mentioned_stocks" in analysis_result:
-                        print(f"✓ Successfully parsed post analysis with {len(analysis_result['mentioned_stocks'])} stocks")
+                        # Also check if structured_analysis is present
+                        if "structured_analysis" not in analysis_result:
+                            analysis_result["structured_analysis"] = {}
+                        
+                        print(f"✓ Successfully parsed post analysis with {len(analysis_result['mentioned_stocks'])} stocks and structured analysis")
                         return analysis_result
                     else:
                         print("✗ Invalid JSON structure from Gemini")
-                        return {"post_summary": "Analysis completed", "mentioned_stocks": []}
+                        return {"post_summary": "Analysis completed", "mentioned_stocks": [], "structured_analysis": {}}
                 else:
                     print("✗ No JSON object found in Gemini response")
-                    return {"post_summary": "Analysis completed", "mentioned_stocks": []}
+                    return {"post_summary": "Analysis completed", "mentioned_stocks": [], "structured_analysis": {}}
                     
             except json.JSONDecodeError as e:
                 print(f"✗ Failed to parse JSON from Gemini response: {e}")
                 print(f"Raw response: {response_text[:300]}...")
-                return {"post_summary": "Analysis completed", "mentioned_stocks": []}
+                return {"post_summary": "Analysis completed", "mentioned_stocks": [], "structured_analysis": {}}
         else:
             print("✗ No valid response from Gemini")
-            return {"post_summary": "", "mentioned_stocks": []}
+            return {"post_summary": "", "mentioned_stocks": [], "structured_analysis": {}}
             
     except Exception as e:
         print(f"✗ Error calling Gemini API for individual post: {e}")
-        return {"post_summary": "Analysis failed", "mentioned_stocks": []}
+        return {"post_summary": "Analysis failed", "mentioned_stocks": [], "structured_analysis": {}}
 
 
 @app.post("/crawl-multiple")
@@ -1096,6 +1429,8 @@ async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
         print(f"\n=== Received Multiple Sources Request ===")
         print(f"Number of sources: {len(request.sources)}")
         print(f"Crawl days: {request.days}")
+        if request.debug:
+            print(f"🐛 DEBUG MODE: Will crawl only 1 valid post from first source")
         for i, source in enumerate(request.sources, 1):
             print(f"Source {i}: {source.sourceName} ({source.sourceType}) - {source.url}")
         
@@ -1136,9 +1471,13 @@ async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
                     print(f"Using existing source from database: {source_in_db['name']}")
                 
                 # Crawl posts from this source
-                collected_posts, total_posts_found = await crawl_posts(source_request, days=request.days)
+                collected_posts, total_posts_found = await crawl_posts(source_request, days=request.days, debug=request.debug)
                 
                 print(f"Source {i} - Posts found: {total_posts_found}, Posts within {request.days} days: {len(collected_posts)}")
+                
+                # In debug mode, only process the first source
+                if request.debug and collected_posts:
+                    print(f"🐛 DEBUG MODE: Found posts from first source, skipping remaining sources")
                 
                 # Process each post from this source
                 for j, post in enumerate(collected_posts, 1):
@@ -1162,8 +1501,11 @@ async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
                             ]
                         else:
                             print(f"✓ Running fresh AI analysis for new post")
-                            # Analyze individual post with Gemini
-                            gemini_result = analyze_individual_post_with_gemini(post['content'])
+                            # Analyze individual post with Gemini - use PDF analysis for PDF content
+                            if hasattr(source_request, 'contentType') and source_request.contentType == 'pdf':
+                                gemini_result = analyze_pdf_report_with_gemini(post['content'])
+                            else:
+                                gemini_result = analyze_individual_post_with_gemini(post['content'])
                             
                             # Handle different response formats from Gemini
                             mentioned_stocks_data = []
@@ -1193,8 +1535,18 @@ async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
                                 print(f"DEBUG: Multi-source attempting to save post to database with {len(mentioned_stocks_data)} stocks")
                                 try:
                                     post_summary = gemini_result.get('post_summary', '') if isinstance(gemini_result, dict) else ''
-                                    await db_service.save_post_with_analysis(post, source_id, mentioned_stocks_data, post_summary)
-                                    print(f"✓ Post and analysis saved to database")
+                                    
+                                    # Add structured_analysis to each stock mention
+                                    structured_analysis = gemini_result.get('structured_analysis', {}) if isinstance(gemini_result, dict) else {}
+                                    enriched_stocks_data = []
+                                    for stock_data in mentioned_stocks_data:
+                                        if isinstance(stock_data, dict):
+                                            enriched_stock = stock_data.copy()
+                                            enriched_stock['structured_analysis'] = structured_analysis
+                                            enriched_stocks_data.append(enriched_stock)
+                                    
+                                    await db_service.save_post_with_analysis(post, source_id, enriched_stocks_data, post_summary)
+                                    print(f"✓ Post and analysis with structured data saved to database")
                                 except Exception as db_error:
                                     print(f"✗ Error saving to database: {db_error}")
                             else:
@@ -1268,6 +1620,11 @@ async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
                 
                 successful_sources += 1
                 print(f"✓ Source {i} ({source_request.sourceName}) completed successfully")
+                
+                # In debug mode, break after processing the first source with posts
+                if request.debug and collected_posts:
+                    print(f"🐛 DEBUG MODE: Processed first source with posts, stopping")
+                    break
                 
             except Exception as e:
                 print(f"✗ Error processing source {i} ({source_request.sourceName}): {e}")
@@ -1548,6 +1905,35 @@ async def get_company_info(symbol: str):
     except Exception as e:
         print(f"Error fetching company info for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch company info: {str(e)}")
+
+@app.get("/stock-analysis/{symbol}")
+async def get_stock_structured_analysis(symbol: str, post_url: str):
+    """
+    Get detailed structured analysis for a specific stock mention in a specific post
+    
+    Args:
+        symbol: Stock symbol (e.g., ACB, HPG) 
+        post_url: URL of the post containing the analysis (query parameter)
+    
+    Returns:
+        JSON with detailed structured analysis data
+    """
+    try:
+        if not post_url:
+            raise HTTPException(status_code=400, detail="post_url query parameter is required")
+            
+        analysis_data = await db_service.get_stock_structured_analysis(symbol, post_url)
+        
+        if not analysis_data:
+            raise HTTPException(status_code=404, detail=f"Structured analysis not found for {symbol} in specified post")
+        
+        return JSONResponse(content=analysis_data)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching structured analysis for {symbol} in post {post_url}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch structured analysis: {str(e)}")
 
 @app.get("/stock-prices/{symbol}")
 async def get_stock_prices(symbol: str, period: str = "1m"):
@@ -2301,6 +2687,7 @@ async def company_update_page():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
 
 @app.get("/test-date-logic")
 async def test_date_logic(days: int = 1):
