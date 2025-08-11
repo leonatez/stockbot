@@ -1986,46 +1986,126 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
                 "message": f"No price data available for {symbol} in the last {period_label.lower()}"
             })
         
-        # Format data for Chart.js
+        # Prepare candlestick chart data
+        candlestick_data = []
+        volume_data = []
+        
+        for record in price_result.data:
+            candlestick_data.append({
+                "t": record["date"],  # time
+                "o": float(record["open"]),    # open
+                "h": float(record["high"]),    # high
+                "l": float(record["low"]),     # low
+                "c": float(record["close"]),   # close
+                "v": int(record["volume"]) if record["volume"] else 0  # volume for reference
+            })
+            
+            # Prepare volume data for potential secondary chart
+            volume_data.append({
+                "t": record["date"],
+                "y": int(record["volume"]) if record["volume"] else 0
+            })
+        
         chart_data = {
-            "labels": [record["date"] for record in price_result.data],
             "datasets": [{
-                "label": f"{symbol} Price",
-                "data": [float(record["close"]) for record in price_result.data],
-                "borderColor": "rgb(59, 130, 246)",
-                "backgroundColor": "rgba(59, 130, 246, 0.1)",
-                "borderWidth": 2,
-                "fill": True,
-                "tension": 0.1
+                "label": f"{symbol} OHLC",
+                "data": candlestick_data,
+                "borderColor": {
+                    "up": "#10b981",      # green for bullish candles
+                    "down": "#ef4444",    # red for bearish candles
+                    "unchanged": "#6b7280" # gray for unchanged
+                },
+                "backgroundColor": {
+                    "up": "rgba(16, 185, 129, 0.8)",
+                    "down": "rgba(239, 68, 68, 0.8)", 
+                    "unchanged": "rgba(107, 114, 128, 0.8)"
+                }
             }]
         }
         
-        # Chart configuration
+        # Use bar chart to create candlestick-like visualization
+        # Create datasets for High-Low range and Open-Close body
+        high_low_data = []
+        open_close_data = []
+        
+        for record in price_result.data:
+            date = record["date"]
+            o, h, l, c = float(record["open"]), float(record["high"]), float(record["low"]), float(record["close"])
+            
+            high_low_data.append({
+                "x": date,
+                "y": [l, h]  # Low to High range
+            })
+            
+            # Color based on bullish/bearish
+            color = "#10b981" if c >= o else "#ef4444"  # green if close >= open, red otherwise
+            
+            open_close_data.append({
+                "x": date,
+                "y": [min(o, c), max(o, c)],  # Open to Close body
+                "backgroundColor": color,
+                "borderColor": color,
+                "ohlc": {"o": o, "h": h, "l": l, "c": c, "v": int(record["volume"]) if record["volume"] else 0}
+            })
+        
+        chart_data = {
+            "datasets": [
+                {
+                    "label": "Price Range",
+                    "type": "bar",
+                    "data": high_low_data,
+                    "backgroundColor": "rgba(107, 114, 128, 0.8)",
+                    "borderColor": "#6b7280",
+                    "borderWidth": 1,
+                    "barThickness": 2,
+                    "categoryPercentage": 0.8,
+                    "barPercentage": 0.1
+                },
+                {
+                    "label": f"{symbol} OHLC",
+                    "type": "bar", 
+                    "data": open_close_data,
+                    "borderWidth": 1,
+                    "barThickness": 8,
+                    "categoryPercentage": 0.8,
+                    "barPercentage": 0.8
+                }
+            ]
+        }
+        
+        # Chart configuration for OHLC bar chart
         chart_config = {
-            "type": "line",
+            "type": "bar",
             "data": chart_data,
             "options": {
                 "responsive": True,
                 "maintainAspectRatio": False,
                 "scales": {
+                    "x": {
+                        "type": "time",
+                        "time": {
+                            "unit": "day",
+                            "displayFormats": {
+                                "day": "MMM dd"
+                            }
+                        },
+                        "title": {
+                            "display": True,
+                            "text": "Date"
+                        }
+                    },
                     "y": {
                         "beginAtZero": False,
                         "title": {
                             "display": True,
                             "text": "Price (VND)"
                         }
-                    },
-                    "x": {
-                        "title": {
-                            "display": True,
-                            "text": "Date"
-                        }
                     }
                 },
                 "plugins": {
                     "title": {
                         "display": True,
-                        "text": f"{symbol} - {period_label} Price Trend"
+                        "text": f"{symbol} - {period_label} OHLC Chart"
                     },
                     "legend": {
                         "display": False

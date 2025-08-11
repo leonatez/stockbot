@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VNStock Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
@@ -1266,7 +1267,7 @@
                                     <li>• Real-time sentiment tracking for Vietnamese stocks</li>
                                     <li>• Detailed financial performance analysis</li>
                                     <li>• Industry classification and sector trends</li>
-                                    <li>• Historical price charts and patterns</li>
+                                    <li>• Interactive OHLC charts with price range visualization</li>
                                 </ul>
                             </div>
                             <div class="bg-white border border-gray-200 rounded-lg p-4">
@@ -3390,6 +3391,65 @@
             document.body.appendChild(modal);
         }
         
+        // Helper function to process OHLC chart configuration
+        function processCandlestickChart(chartConfig) {
+            // Clone the config to avoid modifying the original
+            const config = JSON.parse(JSON.stringify(chartConfig));
+            
+            // Add custom tooltip for OHLC bar charts
+            if (config.type === 'bar') {
+                if (!config.options.plugins) config.options.plugins = {};
+                if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
+                
+                config.options.plugins.tooltip.callbacks = {
+                    title: function(context) {
+                        if (context[0] && context[0].label) {
+                            const date = new Date(context[0].label);
+                            return date.toLocaleDateString('vi-VN');
+                        }
+                        return '';
+                    },
+                    label: function(context) {
+                        // Check if this is the OHLC dataset (has ohlc data)
+                        const rawData = context.raw;
+                        if (rawData && rawData.ohlc) {
+                            const ohlc = rawData.ohlc;
+                            const labels = [
+                                `Open: ${ohlc.o.toLocaleString('vi-VN')} VND`,
+                                `High: ${ohlc.h.toLocaleString('vi-VN')} VND`,
+                                `Low: ${ohlc.l.toLocaleString('vi-VN')} VND`,
+                                `Close: ${ohlc.c.toLocaleString('vi-VN')} VND`,
+                                `Volume: ${ohlc.v.toLocaleString('vi-VN')}`
+                            ];
+                            
+                            // Calculate price change
+                            const change = ohlc.c - ohlc.o;
+                            const changePercent = ((change / ohlc.o) * 100).toFixed(2);
+                            const changeStr = change >= 0 ? `+${change.toFixed(0)}` : change.toFixed(0);
+                            labels.push(`Change: ${changeStr} VND (${changePercent}%)`);
+                            
+                            return labels;
+                        }
+                        
+                        // For the High-Low range dataset, don't show tooltip
+                        return [];
+                    }
+                };
+                
+                // Configure interaction for OHLC charts
+                config.options.interaction = {
+                    intersect: false,
+                    mode: 'index'
+                };
+                
+                // Configure stacked bars for OHLC display
+                config.options.scales.x.stacked = false;
+                config.options.scales.y.stacked = false;
+            }
+            
+            return config;
+        }
+
         function showPriceChartModal(symbol, chartData, currentPeriod = '1m') {
             let currentChart = null; // Store the current chart instance
             
@@ -3488,9 +3548,12 @@
                                 currentChart = null;
                             }
                             
+                            // Process chart config for candlestick charts
+                            const processedConfig = processCandlestickChart(result.chart_config);
+                            
                             // Create new chart instance
                             const ctx = canvas.getContext('2d');
-                            currentChart = new Chart(ctx, result.chart_config);
+                            currentChart = new Chart(ctx, processedConfig);
                         }
                         
                         // Show chart and hide loading
@@ -3511,7 +3574,8 @@
             setTimeout(() => {
                 const canvas = document.getElementById('modalPriceChart');
                 if (canvas && chartData.chart_config) {
-                    currentChart = new Chart(canvas.getContext('2d'), chartData.chart_config);
+                    const processedConfig = processCandlestickChart(chartData.chart_config);
+                    currentChart = new Chart(canvas.getContext('2d'), processedConfig);
                 }
             }, 100);
             
