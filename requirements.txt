@@ -3,6 +3,7 @@ fastapi==0.115.6
 uvicorn==0.34.0
 python-multipart==0.0.20
 starlette==0.41.3
+pip install markitdown[all]
 
 # Fix for distutils deprecation and compatibility
 setuptools==72.1.0
