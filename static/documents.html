@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - VNStock Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/shared.css">
+</head>
+
+<body class="bg-light font-sans">
+    <!-- Mobile Menu Button -->
+    <button id="mobileMenuBtn" class="fixed top-4 left-4 z-50 md:hidden bg-primary text-white p-3 rounded-lg shadow-lg">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar fixed left-0 top-0 h-full w-64 bg-white shadow-xl z-40 md:translate-x-0">
+        <!-- Logo -->
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
+                    <i class="fas fa-chart-line text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-dark">VNStock</h1>
+                    <p class="text-sm text-gray-500">Analyzer</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="p-4">
+            <ul class="space-y-2">
+                <li>
+                    <a href="/news" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-newspaper text-lg"></i>
+                        <span>News</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/analyze" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-analytics text-lg"></i>
+                        <span>Analyze</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/company-update" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-building text-lg"></i>
+                        <span>Company Update</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/documents" class="sidebar-item active flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-book text-lg"></i>
+                        <span>Documents</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- User Info -->
+        <div class="absolute bottom-0 w-full p-4 border-t border-gray-100">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-white"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-dark">Stock Trader</p>
+                    <p class="text-xs text-gray-500">Premium User</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+    
+    <!-- Overlay for mobile -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+    
+    <!-- Main Content -->
+    <main class="md:ml-64 min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-100 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-dark">Documentation</h2>
+                    <p class="text-gray-500 mt-1">Comprehensive guide to understanding and using all features</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 text-gray-400 hover:text-primary transition-colors">
+                        <i class="fas fa-bell text-lg"></i>
+                    </button>
+                    <button class="p-2 text-gray-400 hover:text-primary transition-colors">
+                        <i class="fas fa-cog text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Page Content -->
+        <div class="p-6">
+            <!-- Header Section -->
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-sm border border-gray-100 p-8 mb-8 text-white">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-book text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-3xl font-bold">VNStock Analyzer Documentation</h3>
+                        <p class="text-indigo-100 mt-2">Comprehensive guide to understanding and using all features</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table of Contents -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+                <h4 class="text-xl font-bold text-dark mb-4 flex items-center">
+                    <i class="fas fa-list-ul text-indigo-500 mr-3"></i>
+                    Table of Contents
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <a href="#overview" class="block p-3 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
+                            <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+                            System Overview
+                        </a>
+                        <a href="#news-feature" class="block p-3 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
+                            <i class="fas fa-newspaper text-green-500 mr-2"></i>
+                            News Dashboard
+                        </a>
+                        <a href="#analysis-feature" class="block p-3 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
+                            <i class="fas fa-analytics text-purple-500 mr-2"></i>
+                            Multi-Source Analysis
+                        </a>
+                    </div>
+                    <div class="space-y-2">
+                        <a href="#company-update" class="block p-3 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
+                            <i class="fas fa-building text-orange-500 mr-2"></i>
+                            Company Data Management
+                        </a>
+                        <a href="#workflow" class="block p-3 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
+                            <i class="fas fa-project-diagram text-red-500 mr-2"></i>
+                            System Workflow
+                        </a>
+                        <a href="#technical" class="block p-3 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors">
+                            <i class="fas fa-star text-yellow-500 mr-2"></i>
+                            Investment Features
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Overview -->
+            <div id="overview" class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <h4 class="text-2xl font-bold text-dark mb-6 flex items-center">
+                    <i class="fas fa-info-circle text-blue-500 mr-3"></i>
+                    System Overview
+                </h4>
+                
+                <div class="prose max-w-none">
+                    <div class="mb-6">
+                        <h5 class="text-lg font-semibold text-dark mb-3">What is VNStock Analyzer?</h5>
+                        <p class="text-gray-700 leading-relaxed mb-4">
+                            VNStock Analyzer is a comprehensive Vietnamese stock market intelligence platform that automatically monitors 
+                            financial news and delivers intelligent market insights. The system provides real-time sentiment analysis, 
+                            company performance tracking, and market trend identification to help investors make informed decisions.
+                        </p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h5 class="text-lg font-semibold text-dark mb-3">Key Investment Features</h5>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <i class="fas fa-chart-line text-blue-600 text-xl mb-2"></i>
+                                <h6 class="font-semibold text-blue-800">Smart Market Analysis</h6>
+                                <p class="text-blue-700 text-sm">Automated sentiment tracking across Vietnamese financial news</p>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                                <i class="fas fa-newspaper text-green-600 text-xl mb-2"></i>
+                                <h6 class="font-semibold text-green-800">Multi-Source News Monitoring</h6>
+                                <p class="text-green-700 text-sm">Comprehensive coverage of company, industry, and market news</p>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                <i class="fas fa-chart-area text-purple-600 text-xl mb-2"></i>
+                                <h6 class="font-semibold text-purple-800">Real-time Market Data</h6>
+                                <p class="text-purple-700 text-sm">Live price tracking and automated company updates</p>
+                            </div>
+                            <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                                <i class="fas fa-shield-alt text-orange-600 text-xl mb-2"></i>
+                                <h6 class="font-semibold text-orange-800">Reliable Intelligence</h6>
+                                <p class="text-orange-700 text-sm">Advanced deduplication and data quality controls</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h5 class="text-lg font-semibold text-dark mb-3">Investment Benefits</h5>
+                        <ul class="text-gray-700 space-y-2">
+                            <li class="flex items-start">
+                                <i class="fas fa-bullseye text-green-500 mr-3 mt-1"></i>
+                                <span><strong>Enhanced Decision Making:</strong> Access comprehensive sentiment analysis and market insights for better investment timing</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-chart-line text-blue-500 mr-3 mt-1"></i>
+                                <span><strong>Industry Intelligence:</strong> Monitor sector trends and macro economic factors affecting your portfolio</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-clock text-purple-500 mr-3 mt-1"></i>
+                                <span><strong>Time Efficiency:</strong> Automated news monitoring saves hours of manual research daily</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- News Dashboard Feature -->
+            <div id="news-feature" class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <h4 class="text-2xl font-bold text-dark mb-6 flex items-center">
+                    <i class="fas fa-newspaper text-green-500 mr-3"></i>
+                    News Dashboard
+                </h4>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">What it does</h5>
+                    <p class="text-gray-700 leading-relaxed mb-4">
+                        The News Dashboard provides real-time Vietnamese stock market insights with live VN-Index performance 
+                        charts and comprehensive market analysis. It displays recent stock mentions, sentiment trends, and 
+                        market performance in an intuitive, visually appealing interface.
+                    </p>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">How it works</h5>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <ol class="text-gray-700 space-y-2 list-decimal list-inside">
+                            <li><strong>VN-Index Integration:</strong> Fetches real-time VN-Index data using VNStock API</li>
+                            <li><strong>Interactive Charts:</strong> Displays 1M, 3M, 6M, and 1Y performance with Chart.js</li>
+                            <li><strong>Stock Analysis Display:</strong> Shows recent stock mentions with sentiment analysis</li>
+                            <li><strong>Market Overview:</strong> Provides market statistics and trending stocks</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Why use it</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <i class="fas fa-tachometer-alt text-green-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-green-800">Real-time Insights</h6>
+                            <p class="text-green-700 text-sm">Stay updated with latest market movements and VN-Index performance</p>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <i class="fas fa-eye text-blue-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-blue-800">Visual Analytics</h6>
+                            <p class="text-blue-700 text-sm">Interactive charts make market trends easy to understand</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border border-green-200">
+                    <h6 class="font-semibold text-gray-800 mb-2 flex items-center">
+                        <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                        Pro Tip
+                    </h6>
+                    <p class="text-gray-700 text-sm">
+                        Use different time periods (1M, 3M, 6M, 1Y) to understand both short-term volatility and long-term trends 
+                        for better investment decisions.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Multi-Source Analysis Feature -->
+            <div id="analysis-feature" class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <h4 class="text-2xl font-bold text-dark mb-6 flex items-center">
+                    <i class="fas fa-analytics text-purple-500 mr-3"></i>
+                    Multi-Source Analysis System
+                </h4>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">What it does</h5>
+                    <p class="text-gray-700 leading-relaxed mb-4">
+                        The heart of VNStock Analyzer - a sophisticated system that crawls multiple financial news sources, 
+                        analyzes content using AI, and provides comprehensive stock analysis with contextual intelligence. 
+                        It supports three types of analysis: Company-specific, Industry-level, and Macro-economic.
+                    </p>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Source Types</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <i class="fas fa-building text-blue-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-blue-800">Company Sources</h6>
+                            <p class="text-blue-700 text-sm">Analyze individual stock mentions and company-specific news</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <i class="fas fa-industry text-green-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-green-800">Industry Sources</h6>
+                            <p class="text-green-700 text-sm">Track industry trends using Vietnamese ICB classification codes</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                            <i class="fas fa-globe-asia text-purple-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-purple-800">Macro Sources</h6>
+                            <p class="text-purple-700 text-sm">Monitor macro-economic indicators and market environment</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">How it works - 10-Step Process</h5>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <div class="space-y-3">
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">1</span>
+                                <div>
+                                    <strong>VN30 Update:</strong> Fetches current VN30 stock list and updates database
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">2</span>
+                                <div>
+                                    <strong>Smart Crawling:</strong> Checks database for existing posts, only crawls new content
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">3</span>
+                                <div>
+                                    <strong>Content Processing:</strong> Extracts clean text using XPath selectors
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">4</span>
+                                <div>
+                                    <strong>AI Analysis:</strong> Gemini 2.5-Pro analyzes content for stocks, industries, or macro themes
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">5</span>
+                                <div>
+                                    <strong>Database Storage:</strong> Saves posts and analysis results with relationships
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">6</span>
+                                <div>
+                                    <strong>Industry Context:</strong> Maps stocks to industries for contextual analysis
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">7</span>
+                                <div>
+                                    <strong>Macro Context:</strong> Adds macro-economic environment to analysis
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">8</span>
+                                <div>
+                                    <strong>Price Updates:</strong> Fetches latest stock prices via VNStock API
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">9</span>
+                                <div>
+                                    <strong>Company Data:</strong> Updates company information and ICB codes
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <span class="bg-indigo-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-0.5">10</span>
+                                <div>
+                                    <strong>Final Results:</strong> Combines all analysis into comprehensive stock insights
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Why use it</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                            <i class="fas fa-brain text-purple-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-purple-800">Contextual Intelligence</h6>
+                            <p class="text-purple-700 text-sm">Get stock analysis enhanced with industry trends and macro environment</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <i class="fas fa-save text-green-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-green-800">Smart Efficiency</h6>
+                            <p class="text-green-700 text-sm">Avoids re-crawling existing content, saving time and API quotas</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+                    <h6 class="font-semibold text-gray-800 mb-2 flex items-center">
+                        <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                        Advanced Tip
+                    </h6>
+                    <p class="text-gray-700 text-sm">
+                        Configure all three source types (Company, Industry, Macro) for the most comprehensive analysis. 
+                        The system will automatically correlate industry trends and macro factors with individual stock mentions.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Company Data Management Feature -->
+            <div id="company-update" class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <h4 class="text-2xl font-bold text-dark mb-6 flex items-center">
+                    <i class="fas fa-building text-orange-500 mr-3"></i>
+                    Company Data Management
+                </h4>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">What it does</h5>
+                    <p class="text-gray-700 leading-relaxed mb-4">
+                        A comprehensive suite of tools for maintaining up-to-date Vietnamese stock market data. 
+                        Includes manual update capabilities for company information, corporate events, dividends, 
+                        and selective price updates, ensuring your analysis is based on the most current data available.
+                    </p>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Available Tools</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <i class="fas fa-info-circle text-green-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-green-800">Company Info Update</h6>
+                            <p class="text-green-700 text-sm">Updates all stocks with ICB industry codes and company details from VNStock</p>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <i class="fas fa-calendar-alt text-blue-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-blue-800">Corporate Events</h6>
+                            <p class="text-blue-700 text-sm">Fresh company events data for stocks mentioned in last 30 days</p>
+                        </div>
+                        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                            <i class="fas fa-coins text-indigo-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-indigo-800">Dividend Updates</h6>
+                            <p class="text-indigo-700 text-sm">Latest dividend information and payment schedules</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                            <i class="fas fa-chart-line text-purple-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-purple-800">Smart Price Updates</h6>
+                            <p class="text-purple-700 text-sm">Selective price updates for recently mentioned stocks missing today's data</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">How it works</h5>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <p class="text-gray-700 mb-3"><strong>Smart Update Process:</strong></p>
+                        <ol class="text-gray-700 space-y-2 list-decimal list-inside">
+                            <li><strong>Data Validation:</strong> Checks current database state before updates</li>
+                            <li><strong>VNStock Integration:</strong> Fetches fresh data using Vietnamese stock APIs</li>
+                            <li><strong>Selective Updates:</strong> Only updates what's needed (e.g., missing price data)</li>
+                            <li><strong>Progress Tracking:</strong> Real-time progress bars with detailed status updates</li>
+                            <li><strong>Results Summary:</strong> Comprehensive reports with success/failure statistics</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Why use it</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                            <i class="fas fa-shield-alt text-orange-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-orange-800">API Quota Management</h6>
+                            <p class="text-orange-700 text-sm">Recover from VNStock quota limits with manual selective updates</p>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <i class="fas fa-clock text-blue-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-blue-800">Data Freshness</h6>
+                            <p class="text-blue-700 text-sm">Ensure analysis uses the most current market data available</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-orange-50 to-red-50 p-4 rounded-lg border border-orange-200">
+                    <h6 class="font-semibold text-gray-800 mb-2 flex items-center">
+                        <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i>
+                        Important Note
+                    </h6>
+                    <p class="text-gray-700 text-sm">
+                        Corporate Events and Dividend updates will delete existing data and replace with fresh information. 
+                        Use these features when you need the most current corporate action data.
+                    </p>
+                </div>
+            </div>
+
+            <!-- System Workflow -->
+            <div id="workflow" class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <h4 class="text-2xl font-bold text-dark mb-6 flex items-center">
+                    <i class="fas fa-project-diagram text-red-500 mr-3"></i>
+                    System Workflow
+                </h4>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Complete Analysis Workflow</h5>
+                    <div class="bg-gray-50 p-6 rounded-lg mb-4">
+                        <div class="space-y-4">
+                            <!-- Phase 1 -->
+                            <div class="border-l-4 border-blue-500 pl-4">
+                                <h6 class="font-semibold text-blue-800">Phase 1: Initialization & Setup</h6>
+                                <p class="text-gray-700 text-sm">System starts analysis by updating VN30 list and initializing Chrome WebDriver pool with anti-detection measures</p>
+                            </div>
+                            
+                            <!-- Phase 2 -->
+                            <div class="border-l-4 border-green-500 pl-4">
+                                <h6 class="font-semibold text-green-800">Phase 2: Smart Content Crawling</h6>
+                                <p class="text-gray-700 text-sm">Checks database for existing posts to avoid re-crawling. Uses XPath selectors to extract post content, dates, and titles from configured sources</p>
+                            </div>
+                            
+                            <!-- Phase 3 -->
+                            <div class="border-l-4 border-purple-500 pl-4">
+                                <h6 class="font-semibold text-purple-800">Phase 3: AI-Powered Analysis</h6>
+                                <p class="text-gray-700 text-sm">Gemini 2.5-Pro analyzes Vietnamese content to extract stock mentions, industry trends, or macro themes with sentiment scoring</p>
+                            </div>
+                            
+                            <!-- Phase 4 -->
+                            <div class="border-l-4 border-orange-500 pl-4">
+                                <h6 class="font-semibold text-orange-800">Phase 4: Contextual Enhancement</h6>
+                                <p class="text-gray-700 text-sm">System maps stocks to industries, searches for related industry sentiment, and incorporates macro-economic context from recent posts</p>
+                            </div>
+                            
+                            <!-- Phase 5 -->
+                            <div class="border-l-4 border-red-500 pl-4">
+                                <h6 class="font-semibold text-red-800">Phase 5: Data Enrichment & Results</h6>
+                                <p class="text-gray-700 text-sm">Updates stock prices and company information, then generates comprehensive analysis results combining all contextual factors</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Data Flow Architecture</h5>
+                    <div class="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-lg border border-gray-200 mb-4">
+                        <p class="text-gray-700 mb-3"><strong>Database-First Approach:</strong></p>
+                        <ul class="text-gray-700 text-sm space-y-1">
+                            <li>• <strong>Source Management:</strong> Configured sources stored in database with type classification</li>
+                            <li>• <strong>Smart Deduplication:</strong> URL-based checking prevents re-processing existing content</li>
+                            <li>• <strong>Relational Storage:</strong> Posts linked to stocks, industries, and macro themes with sentiment scores</li>
+                            <li>• <strong>Aggregated Views:</strong> Daily sentiment aggregations for trend analysis</li>
+                            <li>• <strong>Price Integration:</strong> Automatic stock price updates for all mentioned stocks</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-lg border border-red-200">
+                    <h6 class="font-semibold text-gray-800 mb-2 flex items-center">
+                        <i class="fas fa-cogs text-red-500 mr-2"></i>
+                        Performance Optimization
+                    </h6>
+                    <p class="text-gray-700 text-sm">
+                        The platform employs advanced optimization techniques to deliver fast, accurate market insights 
+                        while maintaining the highest data quality standards for investment decision-making.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Technical Details -->
+            <div id="technical" class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <h4 class="text-2xl font-bold text-dark mb-6 flex items-center">
+                    <i class="fas fa-star text-yellow-500 mr-3"></i>
+                    Premium Investment Features
+                </h4>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Advanced Analytics Suite</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <i class="fas fa-brain text-blue-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-blue-800">Sentiment Intelligence</h6>
+                            <p class="text-blue-700 text-xs">Advanced Vietnamese market sentiment analysis</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <i class="fas fa-chart-bar text-green-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-green-800">Market Data Integration</h6>
+                            <p class="text-green-700 text-xs">Real-time price feeds and company fundamentals</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                            <i class="fas fa-layer-group text-purple-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-purple-800">Multi-Dimensional Analysis</h6>
+                            <p class="text-purple-700 text-xs">Company, industry, and macro-economic perspectives</p>
+                        </div>
+                        <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                            <i class="fas fa-clock text-orange-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-orange-800">Real-Time Monitoring</h6>
+                            <p class="text-orange-700 text-xs">Continuous news tracking and instant alerts</p>
+                        </div>
+                        <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                            <i class="fas fa-chart-line text-red-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-red-800">Portfolio Insights</h6>
+                            <p class="text-red-700 text-xs">Track stocks across VN30 and broader market</p>
+                        </div>
+                        <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                            <i class="fas fa-shield-check text-indigo-600 text-lg mb-2"></i>
+                            <h6 class="font-semibold text-indigo-800">Quality Assurance</h6>
+                            <p class="text-indigo-700 text-xs">Enterprise-grade data validation and accuracy</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Investment Intelligence Dashboard</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white border border-gray-200 rounded-lg p-4">
+                            <h6 class="font-semibold text-dark mb-2">Stock Analysis Features</h6>
+                            <ul class="text-gray-700 text-sm space-y-1">
+                                <li>• Real-time sentiment tracking for Vietnamese stocks</li>
+                                <li>• Detailed financial performance analysis</li>
+                                <li>• Industry classification and sector trends</li>
+                                <li>• Interactive OHLC charts with price range visualization</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white border border-gray-200 rounded-lg p-4">
+                            <h6 class="font-semibold text-dark mb-2">Market Intelligence</h6>
+                            <ul class="text-gray-700 text-sm space-y-1">
+                                <li>• Multi-source news aggregation and analysis</li>
+                                <li>• Macro-economic trend identification</li>
+                                <li>• Corporate events and dividend tracking</li>
+                                <li>• VN30 index monitoring and alerts</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h5 class="text-lg font-semibold text-dark mb-3">Investment Advantages</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                            <i class="fas fa-rocket text-green-600 text-2xl mb-2"></i>
+                            <h6 class="font-semibold text-green-800">Speed</h6>
+                            <p class="text-green-700 text-xs">Instant analysis of breaking news and market events</p>
+                        </div>
+                        <div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <i class="fas fa-bullseye text-blue-600 text-2xl mb-2"></i>
+                            <h6 class="font-semibold text-blue-800">Accuracy</h6>
+                            <p class="text-blue-700 text-xs">Professional-grade data quality and validation</p>
+                        </div>
+                        <div class="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                            <i class="fas fa-layers text-purple-600 text-2xl mb-2"></i>
+                            <h6 class="font-semibold text-purple-800">Comprehensive</h6>
+                            <p class="text-purple-700 text-xs">Complete market coverage and historical data</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-200">
+                    <h6 class="font-semibold text-dark mb-3 flex items-center">
+                        <i class="fas fa-trophy text-yellow-500 mr-2"></i>
+                        Professional Investment Platform
+                    </h6>
+                    <p class="text-gray-700 text-sm leading-relaxed">
+                        VNStock Analyzer delivers institutional-quality market intelligence for Vietnamese equities. 
+                        Our advanced platform combines AI-powered sentiment analysis, real-time market data, and 
+                        comprehensive fundamental analysis to provide the competitive edge needed in today's dynamic markets.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/documents.js"></script>
+</body>
+</html>

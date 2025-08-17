@@ -88,6 +88,13 @@ company.events() #this will return a dataframe of the stock symbol, including al
 company = Vnstock().stock(symbol='VIN', source='TCBS').company #keep the source is always 'TCBS', while replace symbols 'VIN' to the symbol we want to check
 company.dividends() #this will return a dataframe of the stock dividend, including 'exercise_date','cash_year','cash_dividend_percentage','issue_method'
 
-
-
-
+#COMPANY FINANCE
+Finance is one of the most important part of stock analysis. Let's explore what do we have in VNStock with following functions:
+#Get financial condition of a company
+from vnstock import Vnstock
+stock = Vnstock().stock(symbol='VIN', source='VCI') #Keep source from VCI, just change 'VIN' to symbol we want to explore
+stock.finance.balance_sheet(period='quarter', lang='vi', dropna=True) #get balance sheet
+stock.finance.income_statement(period='quarter', lang='vi', dropna=True) #get P&L
+stock.finance.cash_flow(period='quarter', dropna=True) #get cashflow
+stock.finance.income_statement(period='quarter', lang='vi', dropna=True) #get income statement
+stock.finance.ratio(period='quarter', lang='vi', dropna=True) #Get all basic ratio of the company like revenue, revenue growth, net profit, etc 

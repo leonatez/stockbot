@@ -1,634 +1,484 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Company Update - Vietnamese Stock Analysis</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f8fafc;
-            margin: 0;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #1F2937;
-            margin-bottom: 10px;
-        }
-        
-        .subtitle {
-            font-size: 1.1rem;
-            color: #6B7280;
-            margin: 0;
-        }
-        
-        .update-section {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            margin: 20px 0;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #3B82F6;
-        }
-        
-        .update-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .update-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, #3B82F6, #1D4ED8);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-        }
-        
-        .update-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1F2937;
-            margin: 0;
-        }
-        
-        .update-description {
-            color: #6B7280;
-            line-height: 1.6;
-            margin: 15px 0;
-        }
-        
-        .warning-box {
-            background: #FEF3CD;
-            border: 1px solid #F59E0B;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
-            color: #92400E;
-        }
-        
-        .warning-box strong {
-            color: #B45309;
-        }
-        
-        .update-button {
-            background: linear-gradient(135deg, #3B82F6, #1D4ED8);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .update-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 12px rgba(59, 130, 246, 0.3);
-        }
-        
-        .update-button:disabled {
-            background: #9CA3AF;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        
-        .progress-section {
-            display: none;
-            margin-top: 20px;
-            padding: 20px;
-            background: #F3F4F6;
-            border-radius: 8px;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: #E5E7EB;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #3B82F6, #1D4ED8);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        
-        .progress-text {
-            font-size: 14px;
-            color: #374151;
-            margin-top: 5px;
-        }
-        
-        .results-section {
-            display: none;
-            margin-top: 20px;
-        }
-        
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin: 15px 0;
-        }
-        
-        .result-card {
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #E5E7EB;
-        }
-        
-        .result-card.success {
-            background: #F0FDF4;
-            border-color: #10B981;
-        }
-        
-        .result-card.error {
-            background: #FEF2F2;
-            border-color: #EF4444;
-        }
-        
-        .result-card.warning {
-            background: #FFFBEB;
-            border-color: #F59E0B;
-        }
-        
-        .back-nav {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: #3B82F6;
-            text-decoration: none;
-            margin-bottom: 20px;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-        
-        .back-nav:hover {
-            color: #1D4ED8;
-        }
-        
-        .stats-summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        
-        .stat-item {
-            text-align: center;
-            padding: 15px;
-            background: #F9FAFB;
-            border-radius: 8px;
-        }
-        
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1F2937;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #6B7280;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 4px;
-        }
-    </style>
+    <title>Company Update - VNStock Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/shared.css">
 </head>
-<body>
-    <div class="container">
-        <a href="/" class="back-nav">
-            ← Back to Home
-        </a>
-        
-        <div class="header">
-            <h1>Company Data Update</h1>
-            <p class="subtitle">Manual update tools for company information and events data</p>
-        </div>
-        
-        <!-- Manual Company Info Update Section -->
-        <div class="update-section">
-            <div class="update-header">
-                <div class="update-icon">
-                    🏢
-                </div>
-                <h2 class="update-title">Manual Company Info Update</h2>
-            </div>
-            
-            <p class="update-description">
-                This tool updates stock records with ICB codes and company information from VNStock. It fetches comprehensive data including industry classifications, company names, and ICB codes for all Vietnamese stocks, enabling better industry analysis and contextual stock insights.
-            </p>
-            
-            <div class="warning-box">
-                <strong>💡 Note:</strong> This process updates all stock records with the latest company information from VNStock, including ICB industry codes that enable industry-level analysis. Safe to run multiple times - existing data will be preserved and enhanced.
-            </div>
-            
-            <button id="updateCompanyInfoBtn" class="update-button">
-                <span id="companyInfoUpdateIcon">🔄</span>
-                <span id="companyInfoUpdateText">Update Company Info</span>
-            </button>
-            
-            <div id="companyInfoProgressSection" class="progress-section">
-                <div class="progress-text" id="companyInfoProgressText">Initializing...</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="companyInfoProgressBar"></div>
-                </div>
-                <div class="progress-text" id="companyInfoProgressDetails"></div>
-            </div>
-            
-            <div id="companyInfoResultsSection" class="results-section">
-                <h3>Company Info Update Results</h3>
-                <div id="companyInfoStatsSection" class="stats-summary"></div>
-                <div id="companyInfoResultsGrid" class="results-grid"></div>
-            </div>
-        </div>
-        
-        <!-- Manual Company Events Update Section -->
-        <div class="update-section">
-            <div class="update-header">
-                <div class="update-icon">
-                    📅
-                </div>
-                <h2 class="update-title">Manual Company Events Update</h2>
-            </div>
-            
-            <p class="update-description">
-                This tool will delete all current stock events data and fetch fresh event information from vnstock for all stocks mentioned in the last 30 days. Company events include dividends, stock splits, shareholder meetings, and other corporate actions.
-            </p>
-            
-            <div class="warning-box">
-                <strong>⚠️ Important:</strong> This action will permanently delete all existing stock events data and replace it with fresh data from vnstock. This process may take several minutes depending on the number of stocks to update.
-            </div>
-            
-            <button id="updateEventsBtn" class="update-button">
-                <span id="updateIcon">🔄</span>
-                <span id="updateText">Update Company Events</span>
-            </button>
-            
-            <div id="progressSection" class="progress-section">
-                <div class="progress-text" id="progressText">Initializing...</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <div class="progress-text" id="progressDetails"></div>
-            </div>
-            
-            <div id="resultsSection" class="results-section">
-                <h3>Update Results</h3>
-                <div id="statsSection" class="stats-summary"></div>
-                <div id="resultsGrid" class="results-grid"></div>
-            </div>
-        </div>
-    </div>
 
-    <script>
-        // Company Info Update functionality
-        document.getElementById('updateCompanyInfoBtn').addEventListener('click', async function() {
-            const button = this;
-            const icon = document.getElementById('companyInfoUpdateIcon');
-            const text = document.getElementById('companyInfoUpdateText');
-            const progressSection = document.getElementById('companyInfoProgressSection');
-            const resultsSection = document.getElementById('companyInfoResultsSection');
-            const progressBar = document.getElementById('companyInfoProgressBar');
-            const progressText = document.getElementById('companyInfoProgressText');
-            const progressDetails = document.getElementById('companyInfoProgressDetails');
-            
-            // Reset UI
-            button.disabled = true;
-            icon.textContent = '⏳';
-            text.textContent = 'Updating...';
-            progressSection.style.display = 'block';
-            resultsSection.style.display = 'none';
-            progressBar.style.width = '0%';
-            
-            try {
-                // Step 1: Initialize
-                progressText.textContent = 'Fetching stock symbols with industry data from VNStock...';
-                progressBar.style.width = '20%';
-                
-                // Step 2: Start the update process
-                progressText.textContent = 'Starting company info update...';
-                progressBar.style.width = '40%';
-                
-                const updateResponse = await fetch('/company-info/update', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!updateResponse.ok) {
-                    const errorData = await updateResponse.json();
-                    throw new Error(errorData.detail || 'Company info update failed');
-                }
-                
-                progressText.textContent = 'Processing update results...';
-                progressBar.style.width = '80%';
-                
-                const resultData = await updateResponse.json();
-                
-                // Step 3: Display results
-                progressText.textContent = 'Company info update completed!';
-                progressBar.style.width = '100%';
-                
-                setTimeout(() => {
-                    displayCompanyInfoResults(resultData);
-                    progressSection.style.display = 'none';
-                    resultsSection.style.display = 'block';
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Company info update error:', error);
-                progressText.textContent = 'Company info update failed';
-                progressDetails.textContent = `Error: ${error.message}`;
-                progressBar.style.width = '0%';
-                
-                // Show error in results
-                setTimeout(() => {
-                    displayCompanyInfoError(error.message);
-                    resultsSection.style.display = 'block';
-                }, 1000);
-            } finally {
-                // Reset button
-                setTimeout(() => {
-                    button.disabled = false;
-                    icon.textContent = '🔄';
-                    text.textContent = 'Update Company Info';
-                }, 2000);
-            }
-        });
-        
-        function displayCompanyInfoResults(data) {
-            const statsSection = document.getElementById('companyInfoStatsSection');
-            const resultsGrid = document.getElementById('companyInfoResultsGrid');
-            
-            // Display stats summary
-            if (data.summary) {
-                const summary = data.summary;
-                statsSection.innerHTML = `
-                    <div class="stat-item">
-                        <div class="stat-number">${summary.total_stocks_processed}</div>
-                        <div class="stat-label">Total Stocks</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">${summary.successful_updates}</div>
-                        <div class="stat-label">Successfully Updated</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">${summary.failed_updates}</div>
-                        <div class="stat-label">Failed Updates</div>
-                    </div>
-                `;
-            }
-            
-            // Display success message
-            resultsGrid.innerHTML = `
-                <div class="result-card success">
-                    <strong>✅ Success!</strong><br>
-                    <small>Company information and ICB codes updated for ${data.updated_stocks} stocks</small>
+<body class="bg-light font-sans">
+    <!-- Mobile Menu Button -->
+    <button id="mobileMenuBtn" class="fixed top-4 left-4 z-50 md:hidden bg-primary text-white p-3 rounded-lg shadow-lg">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar fixed left-0 top-0 h-full w-64 bg-white shadow-xl z-40 md:translate-x-0">
+        <!-- Logo -->
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
+                    <i class="fas fa-chart-line text-white text-lg"></i>
                 </div>
-            `;
-            
-            // Show failed stocks if any
-            if (data.failed_stocks && data.failed_stocks.length > 0) {
-                let failedHTML = '';
-                data.failed_stocks.slice(0, 5).forEach(failure => {
-                    failedHTML += `
-                        <div class="result-card error">
-                            <strong>${failure.symbol || 'Unknown'}</strong><br>
-                            <small>Error: ${failure.error}</small>
+                <div>
+                    <h1 class="text-xl font-bold text-dark">VNStock</h1>
+                    <p class="text-sm text-gray-500">Analyzer</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="p-4">
+            <ul class="space-y-2">
+                <li>
+                    <a href="/news" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-newspaper text-lg"></i>
+                        <span>News</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/analyze" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-analytics text-lg"></i>
+                        <span>Analyze</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/company-update" class="sidebar-item active flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-building text-lg"></i>
+                        <span>Company Update</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/documents" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-book text-lg"></i>
+                        <span>Documents</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- User Info -->
+        <div class="absolute bottom-0 w-full p-4 border-t border-gray-100">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-white"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-dark">Stock Trader</p>
+                    <p class="text-xs text-gray-500">Premium User</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+    
+    <!-- Overlay for mobile -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+    
+    <!-- Main Content -->
+    <main class="md:ml-64 min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-100 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-dark">Company Update</h2>
+                    <p class="text-gray-500 mt-1">Manual update tools for company information and events data</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 text-gray-400 hover:text-primary transition-colors">
+                        <i class="fas fa-bell text-lg"></i>
+                    </button>
+                    <button class="p-2 text-gray-400 hover:text-primary transition-colors">
+                        <i class="fas fa-cog text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Page Content -->
+        <div class="p-6">
+            <!-- Manual Company Info Update Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-building text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-dark">Manual Company Info Update</h3>
+                        <p class="text-gray-500">Update stock records with ICB codes and company information from VNStock</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                    <p class="text-gray-700 leading-relaxed">
+                        This tool updates stock records with ICB codes and company information from VNStock. It fetches comprehensive data including industry classifications, company names, and ICB codes for all Vietnamese stocks, enabling better industry analysis and contextual stock insights.
+                    </p>
+                </div>
+                
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+                        <div>
+                            <p class="font-semibold text-blue-800 mb-1">Safe Update Process</p>
+                            <p class="text-blue-700 text-sm">This process updates all stock records with the latest company information from VNStock, including ICB industry codes that enable industry-level analysis. Safe to run multiple times - existing data will be preserved and enhanced.</p>
                         </div>
-                    `;
-                });
-                resultsGrid.innerHTML += failedHTML;
-                
-                if (data.failed_stocks.length > 5) {
-                    resultsGrid.innerHTML += `
-                        <div class="result-card warning">
-                            <strong>+${data.failed_stocks.length - 5} more failures</strong><br>
-                            <small>Check console for details</small>
-                        </div>
-                    `;
-                }
-            }
-        }
-        
-        function displayCompanyInfoError(errorMessage) {
-            const statsSection = document.getElementById('companyInfoStatsSection');
-            const resultsGrid = document.getElementById('companyInfoResultsGrid');
-            
-            statsSection.innerHTML = `
-                <div class="stat-item">
-                    <div class="stat-number">❌</div>
-                    <div class="stat-label">Update Failed</div>
+                    </div>
                 </div>
-            `;
-            
-            resultsGrid.innerHTML = `
-                <div class="result-card error">
-                    <strong>Company Info Update Error</strong><br>
-                    <small>${errorMessage}</small>
-                </div>
-            `;
-        }
-        
-        // Company Events Update functionality
-        document.getElementById('updateEventsBtn').addEventListener('click', async function() {
-            const button = this;
-            const icon = document.getElementById('updateIcon');
-            const text = document.getElementById('updateText');
-            const progressSection = document.getElementById('progressSection');
-            const resultsSection = document.getElementById('resultsSection');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            const progressDetails = document.getElementById('progressDetails');
-            
-            // Reset UI
-            button.disabled = true;
-            icon.textContent = '⏳';
-            text.textContent = 'Updating...';
-            progressSection.style.display = 'block';
-            resultsSection.style.display = 'none';
-            progressFill.style.width = '0%';
-            
-            try {
-                // Step 1: Get recent stocks count
-                progressText.textContent = 'Getting stocks mentioned in last 30 days...';
-                progressFill.style.width = '10%';
                 
-                const recentStocksResponse = await fetch('/recent-stocks?days=30');
-                const recentStocksData = await recentStocksResponse.json();
-                const stockCount = recentStocksData.count || 0;
-                
-                progressDetails.textContent = `Found ${stockCount} stocks to update`;
-                progressFill.style.width = '20%';
-                
-                if (stockCount === 0) {
-                    throw new Error('No stocks found in the last 30 days');
-                }
-                
-                // Step 2: Start the update process
-                progressText.textContent = 'Starting company events update...';
-                progressFill.style.width = '30%';
-                
-                const updateResponse = await fetch('/company-events/update', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!updateResponse.ok) {
-                    const errorData = await updateResponse.json();
-                    throw new Error(errorData.detail || 'Update failed');
-                }
-                
-                progressText.textContent = 'Processing update results...';
-                progressFill.style.width = '90%';
-                
-                const resultData = await updateResponse.json();
-                
-                // Step 3: Display results
-                progressText.textContent = 'Update completed!';
-                progressFill.style.width = '100%';
-                
-                setTimeout(() => {
-                    displayResults(resultData);
-                    progressSection.style.display = 'none';
-                    resultsSection.style.display = 'block';
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Update error:', error);
-                progressText.textContent = 'Update failed';
-                progressDetails.textContent = `Error: ${error.message}`;
-                progressFill.style.width = '0%';
-                
-                // Show error in results
-                setTimeout(() => {
-                    displayError(error.message);
-                    resultsSection.style.display = 'block';
-                }, 1000);
-            } finally {
-                // Reset button
-                setTimeout(() => {
-                    button.disabled = false;
-                    icon.textContent = '🔄';
-                    text.textContent = 'Update Company Events';
-                }, 2000);
-            }
-        });
-        
-        function displayResults(data) {
-            const statsSection = document.getElementById('statsSection');
-            const resultsGrid = document.getElementById('resultsGrid');
-            
-            // Display stats summary
-            if (data.summary) {
-                const summary = data.summary;
-                statsSection.innerHTML = `
-                    <div class="stat-item">
-                        <div class="stat-number">${summary.total_stocks_processed}</div>
-                        <div class="stat-label">Total Stocks</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">${summary.successful_updates}</div>
-                        <div class="stat-label">Successful</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">${summary.failed_updates}</div>
-                        <div class="stat-label">Failed</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-number">${summary.total_events_added}</div>
-                        <div class="stat-label">Events Added</div>
-                    </div>
-                `;
-            }
-            
-            // Display individual stock results
-            let resultsHTML = '';
-            
-            // Successful updates
-            if (data.updated_stocks && data.updated_stocks.length > 0) {
-                data.updated_stocks.forEach(stock => {
-                    const cardClass = stock.events_count > 0 ? 'success' : 'warning';
-                    const statusText = stock.events_count > 0 
-                        ? `${stock.events_count} events added` 
-                        : 'No events found';
+                <div class="flex items-center gap-4">
+                    <button id="updateCompanyInfoBtn" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i id="updateCompanyInfoIcon" class="fas fa-sync-alt mr-3"></i>
+                        <span id="updateCompanyInfoText">Update Company Info</span>
+                    </button>
                     
-                    resultsHTML += `
-                        <div class="result-card ${cardClass}">
-                            <strong>${stock.symbol}</strong><br>
-                            <small>${statusText}</small>
-                        </div>
-                    `;
-                });
-            }
-            
-            // Failed updates
-            if (data.failed_stocks && data.failed_stocks.length > 0) {
-                data.failed_stocks.forEach(stock => {
-                    resultsHTML += `
-                        <div class="result-card error">
-                            <strong>${stock.symbol}</strong><br>
-                            <small>Error: ${stock.error}</small>
-                        </div>
-                    `;
-                });
-            }
-            
-            resultsGrid.innerHTML = resultsHTML;
-        }
-        
-        function displayError(errorMessage) {
-            const statsSection = document.getElementById('statsSection');
-            const resultsGrid = document.getElementById('resultsGrid');
-            
-            statsSection.innerHTML = `
-                <div class="stat-item">
-                    <div class="stat-number">❌</div>
-                    <div class="stat-label">Update Failed</div>
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="debugCompanyInfo" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                            <span class="ml-2 text-sm font-medium text-gray-700">Debug (VIC only)</span>
+                        </label>
+                    </div>
                 </div>
-            `;
-            
-            resultsGrid.innerHTML = `
-                <div class="result-card error">
-                    <strong>Update Error</strong><br>
-                    <small>${errorMessage}</small>
+                
+                <!-- Progress Section -->
+                <div id="companyInfoProgressSection" class="hidden mt-8 p-6 bg-gray-50 rounded-lg">
+                    <div class="text-center mb-4">
+                        <div id="companyInfoProgressText" class="text-lg font-medium text-gray-800 mb-2">Initializing...</div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                            <div id="companyInfoProgressBar" class="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div id="companyInfoProgressDetails" class="text-sm text-gray-600"></div>
+                    </div>
                 </div>
-            `;
-        }
-    </script>
+                
+                <!-- Results Section -->
+                <div id="companyInfoResultsSection" class="hidden mt-8">
+                    <h4 class="text-xl font-bold text-dark mb-4">Company Info Update Results</h4>
+                    <div id="companyInfoStatsSection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                    <div id="companyInfoResultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+            
+            <!-- Manual Company Events Update Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-xl flex items-center justify-center">
+                        <i class="fas fa-calendar-alt text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-dark">Manual Company Events Update</h3>
+                        <p class="text-gray-500">Update stock events data with fresh information from vnstock</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                    <p class="text-gray-700 leading-relaxed">
+                        This tool will delete all current stock events data and fetch fresh event information from vnstock for all stocks mentioned in the last 30 days. Company events include dividends, stock splits, shareholder meetings, and other corporate actions.
+                    </p>
+                </div>
+                
+                <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>
+                        <div>
+                            <p class="font-semibold text-amber-800 mb-1">Important Warning</p>
+                            <p class="text-amber-700 text-sm">This action will permanently delete all existing stock events data and replace it with fresh data from vnstock. This process may take several minutes depending on the number of stocks to update.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button id="updateCompanyEventsBtn" class="bg-gradient-to-r from-primary to-secondary hover:from-blue-600 hover:to-indigo-600 text-white px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i id="updateEventsIcon" class="fas fa-sync-alt mr-3"></i>
+                        <span id="updateEventsText">Update Company Events</span>
+                    </button>
+                    
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="debugCompanyEvents" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                            <span class="ml-2 text-sm font-medium text-gray-700">Debug (VIC only)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Progress Section -->
+                <div id="eventsProgressSection" class="hidden mt-8 p-6 bg-gray-50 rounded-lg">
+                    <div class="text-center mb-4">
+                        <div id="eventsProgressText" class="text-lg font-medium text-gray-800 mb-2">Initializing...</div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                            <div id="eventsProgressBar" class="bg-gradient-to-r from-primary to-secondary h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div id="eventsProgressDetails" class="text-sm text-gray-600"></div>
+                    </div>
+                </div>
+                
+                <!-- Results Section -->
+                <div id="eventsResultsSection" class="hidden mt-8">
+                    <h4 class="text-xl font-bold text-dark mb-4">Update Results</h4>
+                    <div id="eventsStatsSection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                    <div id="eventsResultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+            
+            <!-- Manual Company Dividends Update Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-coins text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-dark">Manual Company Dividends Update</h3>
+                        <p class="text-gray-500">Update stock dividends data with fresh information from vnstock</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                    <p class="text-gray-700 leading-relaxed">
+                        This tool will delete all current stock dividends data and fetch fresh dividend information from vnstock for all stocks mentioned in the last 30 days. Dividend data includes cash dividend percentages, exercise dates, and issue methods.
+                    </p>
+                </div>
+                
+                <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>
+                        <div>
+                            <p class="font-semibold text-amber-800 mb-1">Important Warning</p>
+                            <p class="text-amber-700 text-sm">This action will permanently delete all existing stock dividends data and replace it with fresh data from vnstock. This process may take several minutes depending on the number of stocks to update.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button id="updateCompanyDividendsBtn" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i id="updateDividendsIcon" class="fas fa-sync-alt mr-3"></i>
+                        <span id="updateDividendsText">Update Company Dividends</span>
+                    </button>
+                    
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="debugCompanyDividends" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                            <span class="ml-2 text-sm font-medium text-gray-700">Debug (VIC only)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Progress Section -->
+                <div id="dividendsProgressSection" class="hidden mt-8 p-6 bg-gray-50 rounded-lg">
+                    <div class="text-center mb-4">
+                        <div id="dividendsProgressText" class="text-lg font-medium text-gray-800 mb-2">Initializing...</div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                            <div id="dividendsProgressBar" class="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div id="dividendsProgressDetails" class="text-sm text-gray-600"></div>
+                    </div>
+                </div>
+                
+                <!-- Results Section -->
+                <div id="dividendsResultsSection" class="hidden mt-8">
+                    <h4 class="text-xl font-bold text-dark mb-4">Update Results</h4>
+                    <div id="dividendsStatsSection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                    <div id="dividendsResultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+
+            <!-- Manual Stock Prices Update Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-dark">Manual Stock Prices Update</h3>
+                        <p class="text-gray-500">Update stock prices for stocks mentioned in the last 7 days (only if missing today's data)</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+                    <p class="text-gray-700 leading-relaxed">
+                        This tool will check all stocks mentioned in the last 7 days and update their prices only if they don't have today's price data. This is useful when VNStock quota was exceeded during regular analysis, ensuring your price data stays current.
+                    </p>
+                </div>
+                
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+                        <div>
+                            <p class="font-semibold text-blue-800 mb-1">Smart Update</p>
+                            <p class="text-blue-700 text-sm">The system will automatically skip stocks that already have today's price data, saving VNStock API calls and avoiding unnecessary updates.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button id="updateStockPricesBtn" class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i id="updatePricesIcon" class="fas fa-sync-alt mr-3"></i>
+                        <span id="updatePricesText">Update Stock Prices</span>
+                    </button>
+                    
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="debugStockPrices" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                            <span class="ml-2 text-sm font-medium text-gray-700">Debug (VIC only)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Progress Section -->
+                <div id="pricesProgressSection" class="hidden mt-8 p-6 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-lg font-bold text-dark">Progress</h4>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
+                        <div id="pricesProgressBar" class="bg-gradient-to-r from-purple-500 to-pink-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p id="pricesProgressText" class="text-gray-700 font-medium mb-2">Initializing...</p>
+                    <p id="pricesProgressDetails" class="text-gray-600 text-sm"></p>
+                </div>
+                
+                <!-- Results Section -->
+                <div id="pricesResultsSection" class="hidden mt-8">
+                    <h4 class="text-xl font-bold text-dark mb-4">Update Results</h4>
+                    <div id="pricesStatsSection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                    <div id="pricesResultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+
+            <!-- Manual Company Finance Update Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-calculator text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-dark">Manual Company Finance Update</h3>
+                        <p class="text-gray-500">Fetch comprehensive financial data from VNStock for recently mentioned stocks</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                    <p class="text-gray-700 leading-relaxed">
+                        This tool fetches comprehensive financial data including balance sheet, income statement, cash flow, and financial ratios for all stocks mentioned in the last 30 days. Essential for fundamental analysis with metrics like revenue, profit margins, ROE, ROA, and cash flow indicators.
+                    </p>
+                </div>
+                
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+                        <div>
+                            <p class="font-semibold text-blue-800 mb-1">Financial Data Coverage</p>
+                            <p class="text-blue-700 text-sm">Retrieves quarterly financial statements and ratios from VNStock including balance sheet, P&L, cash flow, and key financial ratios. Safe to run multiple times - existing data will be updated with latest information.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button id="updateCompanyFinanceBtn" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i id="updateFinanceIcon" class="fas fa-sync-alt mr-3"></i>
+                        <span id="updateFinanceText">Update Company Finance</span>
+                    </button>
+                    
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="debugCompanyFinance" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                            <span class="ml-2 text-sm font-medium text-gray-700">Debug (VIC only)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Progress Section -->
+                <div id="financeProgressSection" class="hidden mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-lg font-bold text-dark">Progress</h4>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
+                        <div id="financeProgressBar" class="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p id="financeProgressText" class="text-gray-700 font-medium mb-2">Initializing...</p>
+                    <p id="financeProgressDetails" class="text-gray-600 text-sm"></p>
+                </div>
+                
+                <!-- Results Section -->
+                <div id="financeResultsSection" class="hidden mt-8">
+                    <h4 class="text-xl font-bold text-dark mb-4">Update Results</h4>
+                    <div id="financeStatsSection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                    <div id="financeResultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+
+            <!-- Manual Industries Update Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-industry text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-dark">Manual Industries Update</h3>
+                        <p class="text-gray-500">Update industries table with ICB codes and names from VNStock</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg">
+                    <p class="text-gray-700 leading-relaxed">
+                        This tool fetches and updates the industries table with the latest ICB (Industry Classification Benchmark) codes and names from VNStock. Essential for industry analysis and categorization of stocks.
+                    </p>
+                </div>
+                
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+                        <div>
+                            <p class="font-semibold text-blue-800 mb-1">Industries Data</p>
+                            <p class="text-blue-700 text-sm">Updates all industry classifications with ICB codes, Vietnamese names, English names, and hierarchy levels. Safe to run multiple times - existing data will be updated.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <button id="updateIndustriesBtn" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-8 py-4 rounded-lg transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i id="updateIndustriesIcon" class="fas fa-sync-alt mr-3"></i>
+                        <span id="updateIndustriesText">Update Industries</span>
+                    </button>
+                    
+                    <div class="flex items-center gap-2">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="debugIndustries" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                            <span class="ml-2 text-sm font-medium text-gray-700">Debug (First 10 only)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Progress Section -->
+                <div id="industriesProgressSection" class="hidden mt-8 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-lg font-bold text-dark">Progress</h4>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
+                        <div id="industriesProgressBar" class="bg-gradient-to-r from-indigo-500 to-purple-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p id="industriesProgressText" class="text-gray-700 font-medium mb-2">Initializing...</p>
+                    <p id="industriesProgressDetails" class="text-gray-600 text-sm"></p>
+                </div>
+                
+                <!-- Results Section -->
+                <div id="industriesResultsSection" class="hidden mt-8">
+                    <h4 class="text-xl font-bold text-dark mb-4">Update Results</h4>
+                    <div id="industriesStatsSection" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+                    <div id="industriesResultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/shared.js"></script>
+    <script src="/static/js/company-update.js"></script>
 </body>
 </html>

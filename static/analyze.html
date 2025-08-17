@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Analysis - VNStock Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/shared.css">
+</head>
+
+<body class="bg-light font-sans">
+    <!-- Mobile Menu Button -->
+    <button id="mobileMenuBtn" class="fixed top-4 left-4 z-50 md:hidden bg-primary text-white p-3 rounded-lg shadow-lg">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar fixed left-0 top-0 h-full w-64 bg-white shadow-xl z-40 md:translate-x-0">
+        <!-- Logo -->
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
+                    <i class="fas fa-chart-line text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-dark">VNStock</h1>
+                    <p class="text-sm text-gray-500">Analyzer</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="p-4">
+            <ul class="space-y-2">
+                <li>
+                    <a href="/news" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-newspaper text-lg"></i>
+                        <span>News</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/analyze" class="sidebar-item active flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-analytics text-lg"></i>
+                        <span>Analyze</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/company-update" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-building text-lg"></i>
+                        <span>Company Update</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/documents" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-book text-lg"></i>
+                        <span>Documents</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <!-- User Info -->
+        <div class="absolute bottom-0 w-full p-4 border-t border-gray-100">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                    <i class="fas fa-user text-white"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-dark">Stock Trader</p>
+                    <p class="text-xs text-gray-500">Premium User</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+    
+    <!-- Overlay for mobile -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+    
+    <!-- Main Content -->
+    <main class="md:ml-64 min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-100 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-dark">Stock Analysis</h2>
+                    <p class="text-gray-500 mt-1">Configure sources and analyze stock mentions</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 text-gray-400 hover:text-primary transition-colors">
+                        <i class="fas fa-bell text-lg"></i>
+                    </button>
+                    <button class="p-2 text-gray-400 hover:text-primary transition-colors">
+                        <i class="fas fa-cog text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Page Content -->
+        <div class="p-6">
+            <!-- Data Sources Section -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-dark flex items-center">
+                            <i class="fas fa-globe text-primary mr-3"></i>
+                            Data Sources
+                        </h3>
+                        <p class="text-gray-500 mt-1">Configure news sources for stock analysis</p>
+                    </div>
+                    <button id="addNewPageBtn" class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors font-medium">
+                        <i class="fas fa-plus mr-2"></i>Add New Source
+                    </button>
+                </div>
+
+                <!-- Sources List -->
+                <div id="sourcesList" class="space-y-4 mb-6">
+                    <div id="emptyState" class="text-center py-12">
+                        <i class="fas fa-plus-circle text-4xl text-gray-300 mb-4"></i>   
+                        <p class="text-gray-500 text-lg">No sources configured yet</p>
+                        <p class="text-gray-400 text-sm">Click "Add New Source" to get started</p>
+                    </div>
+                </div>
+
+                <!-- Analysis Controls -->
+                <div id="crawlSection" class="hidden border-t border-gray-100 pt-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-lg font-semibold text-dark">
+                            <i class="fas fa-play-circle mr-2 text-primary"></i>Run Analysis
+                        </h4>
+                        <div class="flex items-center space-x-4">
+                            <label class="flex items-center space-x-2 text-sm">
+                                <input type="checkbox" id="debugMode" class="rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="text-gray-700">Debug Mode</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button id="crawlAllBtn" class="bg-gradient-to-r from-primary to-secondary hover:from-blue-600 hover:to-purple-600 text-white px-8 py-3 rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl">
+                        <i id="crawlLoadingIcon" class="fas fa-search mr-2"></i>
+                        <span id="crawlText">Start Analysis</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Analysis Results -->
+            <div id="resultsContainer" class="hidden">
+                <!-- Results will be populated here -->
+            </div>
+
+            <!-- Error Display -->
+            <div id="errorBox" class="hidden bg-red-50 border border-red-200 rounded-lg p-4">
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-triangle text-red-500 mr-3"></i>
+                    <span id="errorText" class="text-red-700"></span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/shared.js?v=10"></script>
+    <script src="/static/js/analyze.js?v=10"></script>
+</body>
+</html>

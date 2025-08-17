@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Documentation - VNStock Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/shared.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.2.3/dist/mermaid.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2F80ED',
+                        secondary: '#4154F1',
+                        dark: '#1A1D29',
+                        light: '#F5F6FA'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-light font-sans">
+    <!-- Mobile Menu Button -->
+    <button id="mobileMenuBtn" class="fixed top-4 left-4 z-50 md:hidden bg-primary text-white p-3 rounded-lg shadow-lg">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar fixed left-0 top-0 h-full w-64 bg-white shadow-xl z-40 md:translate-x-0">
+        <!-- Logo -->
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-r from-primary to-secondary rounded-lg flex items-center justify-center">
+                    <i class="fas fa-chart-line text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-dark">VNStock</h1>
+                    <p class="text-sm text-gray-500">Analyzer</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="p-4">
+            <ul class="space-y-2">
+                <li>
+                    <a href="/news" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-newspaper text-lg"></i>
+                        <span>News</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/analyze" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-analytics text-lg"></i>
+                        <span>Analyze</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/documents" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-book text-lg"></i>
+                        <span>Documents</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/technical-docs" class="sidebar-item active flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-code text-lg"></i>
+                        <span>Technical Docs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/static/company-update.html" class="sidebar-item flex items-center space-x-3 p-3 rounded-lg font-medium">
+                        <i class="fas fa-building text-lg"></i>
+                        <span>Company Update</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="md:ml-64 min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-100">
+            <div class="px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-dark">Technical Documentation</h1>
+                        <p class="text-gray-500 mt-1">Comprehensive system architecture and API documentation</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                            <i class="fas fa-circle text-green-500 mr-1 text-xs"></i>
+                            System Online
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Table of Contents -->
+        <section class="p-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <h2 class="text-xl font-bold text-dark mb-4">Table of Contents</h2>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <a href="#overview" class="block p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                        <i class="fas fa-eye text-blue-500 mr-2"></i>
+                        System Overview
+                    </a>
+                    <a href="#architecture" class="block p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                        <i class="fas fa-sitemap text-purple-500 mr-2"></i>
+                        Architecture
+                    </a>
+                    <a href="#features" class="block p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                        <i class="fas fa-cogs text-green-500 mr-2"></i>
+                        Feature Workflows
+                    </a>
+                    <a href="#database" class="block p-3 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+                        <i class="fas fa-database text-orange-500 mr-2"></i>
+                        Database Schema
+                    </a>
+                    <a href="#api" class="block p-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
+                        <i class="fas fa-code text-red-500 mr-2"></i>
+                        API Reference
+                    </a>
+                    <a href="#deployment" class="block p-3 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
+                        <i class="fas fa-rocket text-indigo-500 mr-2"></i>
+                        Deployment
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Overview -->
+        <section id="overview" class="p-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <h2 class="text-2xl font-bold text-dark mb-4">
+                    <i class="fas fa-eye text-blue-500 mr-2"></i>
+                    System Overview
+                </h2>
+                
+                <div class="prose max-w-none mb-6">
+                    <p class="text-gray-700 mb-4">
+                        The Vietnamese Stock Analysis Crawler is a comprehensive FastAPI-based platform that scrapes financial news from multiple sources, analyzes sentiment using Google's Gemini AI, and provides intelligent stock market insights for Vietnamese exchanges (HOSE, HNX, UPCOM).
+                    </p>
+                    
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-blue-50 p-4 rounded-lg text-center">
+                            <i class="fas fa-spider text-blue-500 text-2xl mb-2"></i>
+                            <h3 class="font-semibold text-blue-800">Multi-Source Crawling</h3>
+                            <p class="text-sm text-blue-600">Company, Industry & Macro</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg text-center">
+                            <i class="fas fa-brain text-green-500 text-2xl mb-2"></i>
+                            <h3 class="font-semibold text-green-800">AI-Powered Analysis</h3>
+                            <p class="text-sm text-green-600">Gemini 2.5 Pro Integration</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg text-center">
+                            <i class="fas fa-chart-line text-purple-500 text-2xl mb-2"></i>
+                            <h3 class="font-semibold text-purple-800">Real-time Data</h3>
+                            <p class="text-sm text-purple-600">VNStock API Integration</p>
+                        </div>
+                        <div class="bg-orange-50 p-4 rounded-lg text-center">
+                            <i class="fas fa-database text-orange-500 text-2xl mb-2"></i>
+                            <h3 class="font-semibold text-orange-800">Smart Storage</h3>
+                            <p class="text-sm text-orange-600">Supabase PostgreSQL</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-dark mb-3">Key Features</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold text-dark mb-2">Analysis Capabilities</h4>
+                        <ul class="space-y-1 text-gray-700">
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Multi-source sentiment aggregation</li>
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Contextual intelligence (Industry + Macro)</li>
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Vietnamese stock symbol recognition</li>
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Real-time progress tracking</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-dark mb-2">Data Management</h4>
+                        <ul class="space-y-1 text-gray-700">
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Smart deduplication system</li>
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Automatic stock price updates</li>
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>Company event tracking</li>
+                            <li><i class="fas fa-check text-green-500 mr-2"></i>ICB industry classification</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture -->
+        <section id="architecture" class="p-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <h2 class="text-2xl font-bold text-dark mb-4">
+                    <i class="fas fa-sitemap text-purple-500 mr-2"></i>
+                    System Architecture
+                </h2>
+
+                <h3 class="text-xl font-semibold text-dark mb-3">Technology Stack</h3>
+                <div class="grid md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-dark mb-2">Backend</h4>
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            <li><i class="fab fa-python text-blue-500 mr-2"></i>FastAPI (Python)</li>
+                            <li><i class="fas fa-robot text-purple-500 mr-2"></i>Selenium WebDriver</li>
+                            <li><i class="fas fa-brain text-green-500 mr-2"></i>Google Gemini AI</li>
+                            <li><i class="fas fa-chart-bar text-orange-500 mr-2"></i>VNStock Library</li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-dark mb-2">Frontend</h4>
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            <li><i class="fab fa-html5 text-orange-500 mr-2"></i>HTML5</li>
+                            <li><i class="fab fa-css3-alt text-blue-500 mr-2"></i>Tailwind CSS</li>
+                            <li><i class="fab fa-js text-yellow-500 mr-2"></i>Vanilla JavaScript</li>
+                            <li><i class="fas fa-chart-line text-green-500 mr-2"></i>Chart.js</li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-dark mb-2">Infrastructure</h4>
+                        <ul class="space-y-1 text-sm text-gray-700">
+                            <li><i class="fas fa-database text-green-500 mr-2"></i>Supabase PostgreSQL</li>
+                            <li><i class="fab fa-chrome text-blue-500 mr-2"></i>Chrome WebDriver Pool</li>
+                            <li><i class="fas fa-cloud text-purple-500 mr-2"></i>CORS Middleware</li>
+                            <li><i class="fas fa-shield-alt text-red-500 mr-2"></i>Anti-Detection Systems</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-dark mb-3">High-Level Architecture</h3>
+                <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                    <div class="mermaid">
+                        graph TB
+                            subgraph "Frontend Layer"
+                                UI[Web Interface]
+                                JS[JavaScript SPA]
+                            end
+                            
+                            subgraph "API Layer"
+                                FastAPI[FastAPI Server]
+                                CORS[CORS Middleware]
+                            end
+                            
+                            subgraph "Processing Layer"
+                                WD[WebDriver Pool]
+                                AI[Gemini AI]
+                                VS[VNStock API]
+                            end
+                            
+                            subgraph "Data Layer"
+                                DB[(Supabase PostgreSQL)]
+                                Views[Database Views]
+                            end
+                            
+                            subgraph "External Sources"
+                                ABS[ABS Securities]
+                                ACBS[ACBS Securities]
+                                Other[Other Sources]
+                            end
+                            
+                            UI --> FastAPI
+                            JS --> FastAPI
+                            FastAPI --> CORS
+                            FastAPI --> WD
+                            FastAPI --> AI
+                            FastAPI --> VS
+                            FastAPI --> DB
+                            WD --> ABS
+                            WD --> ACBS
+                            WD --> Other
+                            DB --> Views
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-dark mb-3">Component Interactions</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 mb-2">Request Flow</h4>
+                        <ol class="space-y-1 text-sm text-blue-700">
+                            <li>1. Frontend sends analysis request</li>
+                            <li>2. FastAPI validates and processes</li>
+                            <li>3. WebDriver crawls configured sources</li>
+                            <li>4. Gemini AI analyzes content</li>
+                            <li>5. Results stored in Supabase</li>
+                            <li>6. Response returned to frontend</li>
+                        </ol>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-green-800 mb-2">Data Flow</h4>
+                        <ol class="space-y-1 text-sm text-green-700">
+                            <li>1. Raw content extraction</li>
+                            <li>2. Text cleaning and normalization</li>
+                            <li>3. AI-powered sentiment analysis</li>
+                            <li>4. Stock symbol recognition</li>
+                            <li>5. Database storage with relationships</li>
+                            <li>6. Aggregated analysis generation</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Workflows -->
+        <section id="features" class="p-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <h2 class="text-2xl font-bold text-dark mb-4">
+                    <i class="fas fa-cogs text-green-500 mr-2"></i>
+                    Feature Workflows
+                </h2>
+
+                <!-- Multi-Source Analysis -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-dark mb-3">Multi-Source Analysis Workflow</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <div class="mermaid">
+                            sequenceDiagram
+                                participant F as Frontend
+                                participant A as FastAPI
+                                participant D as Database
+                                participant W as WebDriver
+                                participant G as Gemini AI
+                                participant V as VNStock
+                                
+                                F->>A: POST /crawl-multiple
+                                A->>D: Update VN30 stocks
+                                A->>D: Check existing sources
+                                A->>W: Initialize driver pool
+                                
+                                loop For each source
+                                    A->>W: Crawl post links
+                                    W->>A: Return post URLs
+                                    A->>D: Check post exists
+                                    alt Post is new
+                                        A->>W: Extract content
+                                        A->>G: Analyze content
+                                        G->>A: Return sentiment + stocks
+                                        A->>D: Save post + analysis
+                                    else Post exists
+                                        A->>D: Retrieve cached analysis
+                                    end
+                                end
+                                
+                                A->>V: Fetch stock prices
+                                A->>D: Update stock data
+                                A->>F: Return aggregated results
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div class="bg-blue-50 p-3 rounded-lg">
+                            <h4 class="font-semibold text-blue-800 mb-2">API Endpoint</h4>
+                            <code class="text-sm bg-blue-100 px-2 py-1 rounded">POST /crawl-multiple</code>
+                        </div>
+                        <div class="bg-green-50 p-3 rounded-lg">
+                            <h4 class="font-semibold text-green-800 mb-2">Key Features</h4>
+                            <p class="text-sm text-green-700">Smart deduplication, contextual analysis</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock Analysis Process -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-dark mb-3">Stock Analysis Process</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <div class="mermaid">
+                            flowchart TD
+                                A[Raw Content] --> B[Text Cleaning]
+                                B --> C[Gemini AI Analysis]
+                                C --> D[Stock Symbol Recognition]
+                                C --> E[Sentiment Classification]
+                                C --> F[Summary Generation]
+                                D --> G[Stock Validation]
+                                G --> H[Database Storage]
+                                E --> H
+                                F --> H
+                                H --> I[Daily Aggregation]
+                                I --> J[Contextual Enhancement]
+                                J --> K[Final Analysis]
+                        </div>
+                    </div>
+                    
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-yellow-800 mb-2">AI Analysis Prompts</h4>
+                        <p class="text-sm text-yellow-700 mb-2">The system uses Vietnamese-specific prompts for Gemini AI:</p>
+                        <ul class="text-sm text-yellow-700 space-y-1">
+                            <li>• Stock symbol extraction with confidence scoring</li>
+                            <li>• Sentiment analysis (positive/negative/neutral)</li>
+                            <li>• Context summarization for each mention</li>
+                            <li>• Industry and macro theme recognition</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Company Data Updates -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-dark mb-3">Company Data Update Process</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <div class="mermaid">
+                            sequenceDiagram
+                                participant F as Frontend
+                                participant A as FastAPI
+                                participant V as VNStock API
+                                participant D as Database
+                                
+                                F->>A: POST /company-info/update
+                                A->>D: Get mentioned stocks
+                                
+                                loop For each stock
+                                    A->>V: Fetch company profile
+                                    A->>V: Fetch recent events
+                                    A->>V: Fetch dividend history
+                                    A->>V: Fetch price history
+                                    A->>D: Upsert company data
+                                    A->>D: Update stock events
+                                    A->>D: Update dividends
+                                    A->>D: Update price data
+                                end
+                                
+                                A->>F: Return update summary
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="bg-purple-50 p-3 rounded-lg">
+                            <h4 class="font-semibold text-purple-800 mb-2">Company Info</h4>
+                            <code class="text-sm bg-purple-100 px-2 py-1 rounded">POST /company-info/update</code>
+                        </div>
+                        <div class="bg-indigo-50 p-3 rounded-lg">
+                            <h4 class="font-semibold text-indigo-800 mb-2">Events</h4>
+                            <code class="text-sm bg-indigo-100 px-2 py-1 rounded">POST /company-events/update</code>
+                        </div>
+                        <div class="bg-pink-50 p-3 rounded-lg">
+                            <h4 class="font-semibold text-pink-800 mb-2">Prices</h4>
+                            <code class="text-sm bg-pink-100 px-2 py-1 rounded">POST /stock-prices/update</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Database Schema -->
+        <section id="database" class="p-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <h2 class="text-2xl font-bold text-dark mb-4">
+                    <i class="fas fa-database text-orange-500 mr-2"></i>
+                    Database Architecture
+                </h2>
+
+                <h3 class="text-xl font-semibold text-dark mb-3">Entity Relationship Overview</h3>
+                <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                    <div class="mermaid">
+                        erDiagram
+                            SOURCES {
+                                uuid id PK
+                                text name
+                                text url
+                                text source_type
+                                text xpath_title
+                                text xpath_content
+                                text xpath_date
+                                text status
+                            }
+                            
+                            POSTS {
+                                uuid id PK
+                                uuid source_id FK
+                                text url
+                                text type
+                                date created_date
+                                text content
+                                text summary
+                            }
+                            
+                            STOCKS {
+                                uuid id PK
+                                text symbol
+                                text organ_name
+                                text exchange
+                                boolean isvn30
+                                text icb_code1
+                                text icb_code2
+                                text icb_code3
+                                text icb_code4
+                            }
+                            
+                            POST_MENTIONED_STOCKS {
+                                uuid id PK
+                                uuid post_id FK
+                                uuid stock_id FK
+                                text sentiment
+                                text summary
+                                jsonb structured_analysis
+                            }
+                            
+                            STOCK_PRICES {
+                                uuid id PK
+                                uuid stock_id FK
+                                date date
+                                numeric open
+                                numeric high
+                                numeric low
+                                numeric close
+                                bigint volume
+                            }
+                            
+                            INDUSTRIES {
+                                text icb_code PK
+                                text icb_name
+                                text en_icb_name
+                                integer level
+                            }
+                            
+                            SOURCES ||--o{ POSTS : "generates"
+                            POSTS ||--o{ POST_MENTIONED_STOCKS : "mentions"
+                            STOCKS ||--o{ POST_MENTIONED_STOCKS : "referenced_by"
+                            STOCKS ||--o{ STOCK_PRICES : "has_prices"
+                            INDUSTRIES ||--o{ STOCKS : "classifies"
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-dark mb-3">Core Tables</h3>
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 mb-2">Sources Management</h4>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li><strong>sources:</strong> News source configurations</li>
+                            <li><strong>posts:</strong> Scraped content with metadata</li>
+                            <li><strong>Supports:</strong> Company, Industry, Macro types</li>
+                        </ul>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-green-800 mb-2">Stock Data</h4>
+                        <ul class="text-sm text-green-700 space-y-1">
+                            <li><strong>stocks:</strong> Company registry with ICB codes</li>
+                            <li><strong>stock_prices:</strong> OHLCV daily data</li>
+                            <li><strong>stock_events:</strong> Corporate announcements</li>
+                        </ul>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-purple-800 mb-2">Analysis Results</h4>
+                        <ul class="text-sm text-purple-700 space-y-1">
+                            <li><strong>post_mentioned_stocks:</strong> AI analysis results</li>
+                            <li><strong>stock_daily_sentiment:</strong> Aggregated sentiment</li>
+                            <li><strong>Features:</strong> JSONB structured analysis</li>
+                        </ul>
+                    </div>
+                    <div class="bg-orange-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-orange-800 mb-2">Multi-Source Support</h4>
+                        <ul class="text-sm text-orange-700 space-y-1">
+                            <li><strong>industries:</strong> ICB classification system</li>
+                            <li><strong>macro_themes:</strong> Economic indicators</li>
+                            <li><strong>Contextual:</strong> Industry + macro analysis</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-dark mb-3">Key Database Views</h3>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-2">Statistics Views</h4>
+                            <ul class="text-sm text-gray-700 space-y-1">
+                                <li><code>v_total_sources</code> - Source count</li>
+                                <li><code>v_active_sources</code> - Active sources</li>
+                                <li><code>v_recent_posts</code> - Recent posts (7 days)</li>
+                                <li><code>v_dashboard_stats</code> - Combined metrics</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-2">Analysis Views</h4>
+                            <ul class="text-sm text-gray-700 space-y-1">
+                                <li><code>company_finance_with_stock</code> - Financial data</li>
+                                <li><code>v_sources_list</code> - Source management</li>
+                                <li>Custom views for reporting dashboards</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Reference -->
+        <section id="api" class="p-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <h2 class="text-2xl font-bold text-dark mb-4">
+                    <i class="fas fa-code text-red-500 mr-2"></i>
+                    API Reference
+                </h2>
+
+                <!-- Core Analysis APIs -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-dark mb-3">Core Analysis APIs</h3>
+                    
+                    <div class="space-y-4">
+                        <!-- Single Source Analysis -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-dark">Single Source Analysis</h4>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono">POST</span>
+                            </div>
+                            <code class="text-sm bg-gray-100 px-2 py-1 rounded block mb-2">/crawl</code>
+                            <p class="text-sm text-gray-600 mb-3">Crawl and analyze posts from a single news source</p>
+                            
+                            <details class="mb-2">
+                                <summary class="cursor-pointer text-sm font-medium text-blue-600">Request Body</summary>
+                                <pre class="mt-2 bg-gray-50 p-3 rounded text-xs overflow-x-auto"><code>{
+  "url": "https://example.com/news",
+  "name": "Example News",
+  "xpath_title": "//h2[@class='title']",
+  "xpath_content": "//div[@class='content']",
+  "xpath_date": "//span[@class='date']",
+  "days": 3,
+  "pagination_rule": "page={page}",
+  "debug_mode": false
+}</code></pre>
+                            </details>
+                            
+                            <details>
+                                <summary class="cursor-pointer text-sm font-medium text-green-600">Response</summary>
+                                <pre class="mt-2 bg-gray-50 p-3 rounded text-xs overflow-x-auto"><code>{
+  "posts": [...],
+  "stock_analysis": {
+    "ACB": {
+      "sentiment": "positive",
+      "mention_count": 3,
+      "summary": "Strong quarterly results..."
+    }
+  },
+  "metadata": {
+    "total_posts": 15,
+    "processing_time": "2.3s"
+  }
+}</code></pre>
+                            </details>
+                        </div>
+
+                        <!-- Multi-Source Analysis -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-dark">Multi-Source Analysis</h4>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono">POST</span>
+                            </div>
+                            <code class="text-sm bg-gray-100 px-2 py-1 rounded block mb-2">/crawl-multiple</code>
+                            <p class="text-sm text-gray-600 mb-3">Aggregate analysis across multiple sources with contextual intelligence</p>
+                            
+                            <details class="mb-2">
+                                <summary class="cursor-pointer text-sm font-medium text-blue-600">Request Body</summary>
+                                <pre class="mt-2 bg-gray-50 p-3 rounded text-xs overflow-x-auto"><code>{
+  "sources": [
+    {
+      "url": "https://abs.vn/news",
+      "name": "ABS Securities",
+      "source_type": "Company",
+      "xpath_title": "//h2[@class='title']",
+      "xpath_content": "//div[@class='content']",
+      "xpath_date": "//span[@class='date']"
+    },
+    {
+      "url": "https://acbs.com.vn/macro",
+      "name": "ACBS Macro",
+      "source_type": "Macro_Economy",
+      "xpath_title": "//h3[@class='macro-title']",
+      "xpath_content": "//div[@class='macro-content']",
+      "xpath_date": "//time[@class='publish-date']"
+    }
+  ],
+  "days": 3,
+  "debug_mode": false
+}</code></pre>
+                            </details>
+                            
+                            <div class="bg-green-50 p-3 rounded-lg">
+                                <h5 class="font-medium text-green-800 mb-1">Enhanced Features</h5>
+                                <ul class="text-sm text-green-700 space-y-1">
+                                    <li>• Contextual analysis with industry and macro factors</li>
+                                    <li>• Automatic VN30 status updates</li>
+                                    <li>• Smart deduplication across sources</li>
+                                    <li>• Real-time progress tracking</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Management APIs -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-dark mb-3">Data Management APIs</h3>
+                    
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <!-- Company Info Update -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-dark">Company Info Update</h4>
+                                <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono">POST</span>
+                            </div>
+                            <code class="text-sm bg-gray-100 px-2 py-1 rounded block mb-2">/company-info/update</code>
+                            <p class="text-sm text-gray-600">Update company profiles and ICB codes</p>
+                        </div>
+
+                        <!-- Stock Prices Update -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-dark">Stock Prices Update</h4>
+                                <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono">POST</span>
+                            </div>
+                            <code class="text-sm bg-gray-100 px-2 py-1 rounded block mb-2">/stock-prices/update</code>
+                            <p class="text-sm text-gray-600">Fetch latest OHLCV data from VNStock</p>
+                        </div>
+
+                        <!-- Company Events -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-dark">Company Events</h4>
+                                <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono">POST</span>
+                            </div>
+                            <code class="text-sm bg-gray-100 px-2 py-1 rounded block mb-2">/company-events/update</code>
+                            <p class="text-sm text-gray-600">Update corporate events and announcements</p>
+                        </div>
+
+                        <!-- Industries Update -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-dark">Industries Update</h4>
+                                <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono">POST</span>
+                            </div>
+                            <code class="text-sm bg-gray-100 px-2 py-1 rounded block mb-2">/industries/update</code>
+                            <p class="text-sm text-gray-600">Update ICB industry classification data</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Source Management APIs -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold text-dark mb-3">Source Management</h3>
+                    
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-dark">Save Source</h4>
+                                <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-sm font-mono">POST</span>
+                            </div>
+                            <code class="text-sm bg-gray-100 px-2 py-1 rounded block mb-2">/sources</code>
+                            <p class="text-sm text-gray-600">Save source configuration to database</p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-semibold text-dark">Get Sources</h4>
+                                <span class="px-2 py-1 bg-orange-100 text-orange-800 rounded text-sm font-mono">GET</span>
+                            </div>
+                            <code class="text-sm bg-gray-100 px-2 py-1 rounded block mb-2">/sources</code>
+                            <p class="text-sm text-gray-600">Retrieve all active sources</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Authentication & Security -->
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-yellow-800 mb-2">
+                        <i class="fas fa-shield-alt mr-2"></i>
+                        Security Features
+                    </h3>
+                    <ul class="text-sm text-yellow-700 space-y-1">
+                        <li>• CORS middleware for cross-origin requests</li>
+                        <li>• Row-level security (RLS) on Supabase tables</li>
+                        <li>• Anti-detection systems for web scraping</li>
+                        <li>• Rate limiting and request validation</li>
+                        <li>• Environment-based API key management</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Deployment -->
+        <section id="deployment" class="p-6">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <h2 class="text-2xl font-bold text-dark mb-4">
+                    <i class="fas fa-rocket text-indigo-500 mr-2"></i>
+                    Deployment & Operations
+                </h2>
+
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold text-blue-800 mb-3">Environment Setup</h3>
+                        <div class="space-y-2">
+                            <div class="text-sm">
+                                <strong>Required Environment Variables:</strong>
+                                <pre class="mt-1 bg-blue-100 p-2 rounded text-xs"><code>GEMINI_API_KEY=your_gemini_key
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_key</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold text-green-800 mb-3">System Requirements</h3>
+                        <ul class="text-sm text-green-700 space-y-1">
+                            <li>• Python 3.8+ with FastAPI</li>
+                            <li>• Chrome/Chromium browser for WebDriver</li>
+                            <li>• PostgreSQL (Supabase) database</li>
+                            <li>• Minimum 2GB RAM for WebDriver pool</li>
+                            <li>• Network access to VNStock API</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-dark mb-3">Deployment Commands</h3>
+                <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                    <div class="space-y-3">
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-1">Start Development Server</h4>
+                            <code class="bg-gray-800 text-green-400 px-3 py-1 rounded block">python main.py</code>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-1">Run Tests</h4>
+                            <code class="bg-gray-800 text-green-400 px-3 py-1 rounded block">python unittest.py</code>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-1">Test Database Connection</h4>
+                            <code class="bg-gray-800 text-green-400 px-3 py-1 rounded block">python test_database.py</code>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-1">Update Database Schema</h4>
+                            <code class="bg-gray-800 text-green-400 px-3 py-1 rounded block">psql -f schema_updates.sql</code>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-semibold text-dark mb-3">Performance Optimizations</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-purple-800 mb-2">WebDriver Pool</h4>
+                        <ul class="text-sm text-purple-700 space-y-1">
+                            <li>• Maximum 3 concurrent drivers</li>
+                            <li>• Automatic cleanup and memory management</li>
+                            <li>• Anti-detection with randomized settings</li>
+                            <li>• Headless mode for server deployment</li>
+                        </ul>
+                    </div>
+                    <div class="bg-orange-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-orange-800 mb-2">Database</h4>
+                        <ul class="text-sm text-orange-700 space-y-1">
+                            <li>• Strategic indexes on foreign keys</li>
+                            <li>• JSONB for structured analysis data</li>
+                            <li>• Smart deduplication queries</li>
+                            <li>• Optimized views for dashboards</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="bg-red-50 p-4 rounded-lg mt-6">
+                    <h3 class="text-lg font-semibold text-red-800 mb-2">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Important Notes
+                    </h3>
+                    <ul class="text-sm text-red-700 space-y-1">
+                        <li>• Chrome version compatibility: Update CHROME_VERSION in main.py if needed</li>
+                        <li>• WebDriver pool cleanup on application shutdown</li>
+                        <li>• Monitor Gemini API usage and rate limits</li>
+                        <li>• Regular database maintenance for optimal performance</li>
+                        <li>• Backup analysis results before major updates</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#2F80ED',
+                primaryTextColor: '#1A1D29',
+                primaryBorderColor: '#4154F1',
+                lineColor: '#6B7280',
+                secondaryColor: '#F5F6FA',
+                tertiaryColor: '#E5E7EB'
+            }
+        });
+
+        // Mobile menu functionality
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth < 768 && !sidebar.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Auto-expand code sections when clicked
+        document.querySelectorAll('details').forEach(detail => {
+            detail.addEventListener('click', function() {
+                if (this.open) {
+                    // If opening, scroll into view after a brief delay
+                    setTimeout(() => {
+                        this.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

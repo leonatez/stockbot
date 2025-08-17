@@ -1,15 +1,8 @@
-# Environment variables
-.env
-.env.local
-.env.production
-
-# Python cache
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -28,10 +21,17 @@ wheels/
 *.egg
 
 # Virtual environments
-venv/
+.env
+.venv
 env/
+venv/
 ENV/
-.venv/
+env.bak/
+venv.bak/
+
+# Environment variables
+.env.local
+.env.production
 
 # IDE
 .vscode/
@@ -53,25 +53,29 @@ Thumbs.db
 *.log
 logs/
 
-# Chrome/Selenium
-chromedriver
-chromedriver.exe
-.chrome/
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+
+# Chrome WebDriver
+chromedriver*
+chrome_debug.log
 
 # Temporary files
 *.tmp
 *.temp
-temp/
-tmp/
+*.bak
+*.orig
+
+# Node modules (if any frontend tools)
+node_modules/
 
 # Database
 *.db
-*.sqlite3
+*.sqlite
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Node modules (if any)
-node_modules/
+# Screenshots from testing
+*.png
+screenshots/

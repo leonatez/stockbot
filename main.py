@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 from selenium.webdriver.common.by import By
@@ -57,6 +57,9 @@ model = genai.GenerativeModel("gemini-2.5-pro")
 driver_pool = queue.Queue()
 driver_lock = threading.Lock()
 MAX_DRIVERS = 3
+
+# Chrome version configuration - change this single value if version mismatch occurs
+CHROME_VERSION = 139
 
 def create_stealth_driver():
     """Create a new undetected Chrome driver with stealth settings optimized for servers"""
@@ -141,10 +144,10 @@ def create_stealth_driver():
         
         # Try to create driver with correct Chrome version
         try:
-            driver = uc.Chrome(options=options, version_main=137)
-            print("Chrome driver created successfully with version 137!")
+            driver = uc.Chrome(options=options, version_main=CHROME_VERSION)
+            print(f"Chrome driver created successfully with version {CHROME_VERSION}!")
         except Exception as e:
-            print(f"Version 137 failed: {e}")
+            print(f"Version {CHROME_VERSION} failed: {e}")
             # Try with automatic version detection as fallback
             driver = uc.Chrome(options=options, version_main=None, driver_executable_path=None, use_subprocess=True)
             print("Chrome driver created with subprocess method!")
@@ -200,8 +203,8 @@ def create_stealth_driver():
             prefs = {"profile.managed_default_content_settings.images": 2}
             options.add_experimental_option("prefs", prefs)
             
-            driver = uc.Chrome(options=options, version_main=137)
-            print("Chrome driver created with minimal headless options and version 137!")
+            driver = uc.Chrome(options=options, version_main=CHROME_VERSION)
+            print(f"Chrome driver created with minimal headless options and version {CHROME_VERSION}!")
             return driver
             
         except Exception as e2:
@@ -282,6 +285,9 @@ class MultipleCrawlRequest(BaseModel):
     sources: List[CrawlRequest]
     days: Optional[int] = 3  # Default to 3 days if not specified
     debug: Optional[bool] = False  # Debug mode: crawl only 1 valid post
+
+class CompanyUpdateRequest(BaseModel):
+    debug: Optional[bool] = False  # Debug mode: process only VIC symbol
 
 class StockAnalysis(BaseModel):
     stock_symbol: str
@@ -1906,6 +1912,42 @@ async def get_company_info(symbol: str):
         print(f"Error fetching company info for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch company info: {str(e)}")
 
+
+@app.get("/company/{symbol}/finance")
+async def get_company_finance(symbol: str, limit: int = 12):
+    """
+    Get company financial data (balance sheet, income statement, cash flow, ratios)
+    
+    Args:
+        symbol: Stock symbol (e.g., ACB, HPG)
+        limit: Maximum number of quarters to return (default: 12)
+    
+    Returns:
+        JSON with financial data by quarter
+    """
+    try:
+        finance_data = await db_service.get_company_finance(symbol, limit)
+        
+        if not finance_data:
+            return JSONResponse(content={
+                "symbol": symbol,
+                "finance_data": [],
+                "message": f"No financial data found for {symbol}. Try updating finance data first.",
+                "quarters_count": 0
+            })
+        
+        return JSONResponse(content={
+            "symbol": symbol,
+            "finance_data": finance_data,
+            "quarters_count": len(finance_data),
+            "data_updated": True
+        })
+        
+    except Exception as e:
+        print(f"Error fetching finance data for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch finance data: {str(e)}")
+
+
 @app.get("/stock-analysis/{symbol}")
 async def get_stock_structured_analysis(symbol: str, post_url: str):
     """
@@ -1936,13 +1978,14 @@ async def get_stock_structured_analysis(symbol: str, post_url: str):
         raise HTTPException(status_code=500, detail=f"Failed to fetch structured analysis: {str(e)}")
 
 @app.get("/stock-prices/{symbol}")
-async def get_stock_prices(symbol: str, period: str = "1m"):
+async def get_stock_prices(symbol: str, period: str = "1m", interval: str = "day"):
     """
     Get stock price data for charting.
     
     Args:
         symbol: Stock symbol (e.g., ACB, HPG)
-        period: Time period - "1m", "3m", "1y" (1 month, 3 months, 1 year)
+        period: Time period - "1m", "3m", "1y" (1 month, 3 months, 1 year), "1d" (1 day for hourly)
+        interval: Time interval - "day" for daily prices, "hour" for hourly prices
     
     Returns:
         JSON with price data and chart configuration
@@ -1950,19 +1993,35 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
     try:
         from datetime import datetime, timedelta
         
-        # Calculate date range based on period
+        # Calculate date range based on period and interval
         today = datetime.now().date()
-        if period == "1m":
-            start_date = (today - timedelta(days=30)).isoformat()
-            period_label = "1 Month"
-        elif period == "3m":
-            start_date = (today - timedelta(days=90)).isoformat()
-            period_label = "3 Months"
-        elif period == "1y":
-            start_date = (today - timedelta(days=365)).isoformat()
-            period_label = "1 Year"
+        
+        if interval == "hour":
+            # Hourly intervals with appropriate periods
+            if period == "1d":
+                start_date = (today - timedelta(days=1)).isoformat()
+                period_label = "1 Day"
+            elif period == "7d":
+                start_date = (today - timedelta(days=7)).isoformat()
+                period_label = "7 Days"
+            elif period == "1m":
+                start_date = (today - timedelta(days=30)).isoformat()
+                period_label = "1 Month"
+            else:
+                raise HTTPException(status_code=400, detail="Invalid period for hourly data. Use '1d', '7d', or '1m'")
         else:
-            raise HTTPException(status_code=400, detail="Invalid period. Use '1m', '3m', or '1y'")
+            # Daily intervals with existing periods
+            if period == "1m":
+                start_date = (today - timedelta(days=30)).isoformat()
+                period_label = "1 Month"
+            elif period == "3m":
+                start_date = (today - timedelta(days=90)).isoformat()
+                period_label = "3 Months"
+            elif period == "1y":
+                start_date = (today - timedelta(days=365)).isoformat()
+                period_label = "1 Year"
+            else:
+                raise HTTPException(status_code=400, detail="Invalid period for daily data. Use '1m', '3m', or '1y'")
         
         # Get stock info and price data
         stock_result = db_service.supabase.table("stocks").select("id, symbol, organ_name, exchange, isvn30").eq("symbol", symbol).execute()
@@ -1973,10 +2032,99 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
         stock_info = stock_result.data[0]
         stock_id = stock_info["id"]
         
-        # Get price data
-        price_result = db_service.supabase.table("stock_prices").select(
-            "date, open, high, low, close, volume"
-        ).eq("stock_id", stock_id).gte("date", start_date).order("date").execute()
+        # Handle hourly vs daily data
+        if interval == "hour":
+            # For hourly data, we need to check if we have it and potentially fetch it
+            hourly_result = db_service.supabase.table("stock_prices_hourly").select(
+                "date, hour, open, high, low, close, volume"
+            ).eq("stock_id", stock_id).gte("date", start_date).order("date, hour").execute()
+            
+            # If no hourly data exists, fetch it from vnstock for the requested period
+            if not hourly_result.data:
+                print(f"No hourly data found for {symbol}, fetching from vnstock...")
+                try:
+                    # Import and fetch hourly data using vnstock
+                    from vnstock import Vnstock
+                    import pandas as pd
+                    from datetime import datetime, timedelta
+                    import time
+                    
+                    stock = Vnstock().stock(symbol=symbol, source='VCI')
+                    
+                    # Calculate the end date (today)
+                    end_date = datetime.now().date().isoformat()
+                    
+                    # Fetch hourly data with retry logic
+                    max_retries = 3
+                    retry_delay = 2
+                    
+                    df = None
+                    for attempt in range(max_retries):
+                        try:
+                            print(f"Attempting to fetch hourly data for {symbol} (attempt {attempt + 1})")
+                            df = stock.quote.history(start=start_date, end=end_date, interval='1H')
+                            print(f"Successfully fetched hourly data: {len(df)} records")
+                            break
+                        except Exception as e:
+                            print(f"Error on attempt {attempt + 1}: {e}")
+                            if "rate limit" in str(e).lower() and attempt < max_retries - 1:
+                                print(f"Rate limit hit, retrying in {retry_delay} seconds...")
+                                time.sleep(retry_delay)
+                                retry_delay *= 2  # Exponential backoff
+                            elif attempt == max_retries - 1:
+                                raise e
+                    
+                    if df is not None and not df.empty:
+                        # Process and insert hourly data
+                        hourly_records = []
+                        for index, row in df.iterrows():
+                            # Extract date and hour from 'time' column (vnstock format)
+                            dt = pd.to_datetime(row['time'])
+                            date_str = dt.date().isoformat()
+                            hour_str = dt.time().isoformat()
+                            
+                            hourly_records.append({
+                                "stock_id": stock_id,
+                                "date": date_str,
+                                "hour": hour_str,
+                                "open": float(row.get('open', 0)),
+                                "high": float(row.get('high', 0)),
+                                "low": float(row.get('low', 0)),
+                                "close": float(row.get('close', 0)),
+                                "volume": int(row.get('volume', 0))
+                            })
+                        
+                        # Insert hourly data in batches to avoid conflicts
+                        if hourly_records:
+                            print(f"Inserting {len(hourly_records)} hourly records to database...")
+                            db_service.supabase.table("stock_prices_hourly").upsert(hourly_records).execute()
+                            print(f"Successfully inserted {len(hourly_records)} hourly price records for {symbol}")
+                        
+                        # Now fetch the data we just inserted
+                        hourly_result = db_service.supabase.table("stock_prices_hourly").select(
+                            "date, hour, open, high, low, close, volume"
+                        ).eq("stock_id", stock_id).gte("date", start_date).order("date, hour").execute()
+                        print(f"Retrieved {len(hourly_result.data)} hourly records from database")
+                    else:
+                        print(f"No hourly data returned from vnstock for {symbol}")
+                        raise Exception(f"No hourly data available for {symbol}")
+                    
+                except Exception as e:
+                    print(f"Error fetching hourly data for {symbol}: {e}")
+                    # Fall back to daily data if hourly fetch fails
+                    interval = "day"
+            
+            if interval == "hour" and hourly_result and hourly_result.data:
+                price_result = hourly_result
+            else:
+                # Fall back to daily if no hourly data
+                interval = "day"
+        
+        if interval == "day":
+            # Get daily price data
+            price_result = db_service.supabase.table("stock_prices").select(
+                "date, open, high, low, close, volume"
+            ).eq("stock_id", stock_id).gte("date", start_date).order("date").execute()
         
         if not price_result.data:
             return JSONResponse(content={
@@ -1991,8 +2139,16 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
         volume_data = []
         
         for record in price_result.data:
+            # Handle time field based on interval
+            if interval == "hour":
+                # Combine date and hour for hourly data
+                time_value = f"{record['date']}T{record['hour']}"
+            else:
+                # Use date for daily data
+                time_value = record["date"]
+            
             candlestick_data.append({
-                "t": record["date"],  # time
+                "t": time_value,  # time
                 "o": float(record["open"]),    # open
                 "h": float(record["high"]),    # high
                 "l": float(record["low"]),     # low
@@ -2002,7 +2158,7 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
             
             # Prepare volume data for potential secondary chart
             volume_data.append({
-                "t": record["date"],
+                "t": time_value,
                 "y": int(record["volume"]) if record["volume"] else 0
             })
         
@@ -2029,11 +2185,16 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
         open_close_data = []
         
         for record in price_result.data:
-            date = record["date"]
+            # Handle time field based on interval
+            if interval == "hour":
+                time_value = f"{record['date']}T{record['hour']}"
+            else:
+                time_value = record["date"]
+            
             o, h, l, c = float(record["open"]), float(record["high"]), float(record["low"]), float(record["close"])
             
             high_low_data.append({
-                "x": date,
+                "x": time_value,
                 "y": [l, h]  # Low to High range
             })
             
@@ -2041,7 +2202,7 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
             color = "#10b981" if c >= o else "#ef4444"  # green if close >= open, red otherwise
             
             open_close_data.append({
-                "x": date,
+                "x": time_value,
                 "y": [min(o, c), max(o, c)],  # Open to Close body
                 "backgroundColor": color,
                 "borderColor": color,
@@ -2084,14 +2245,15 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
                     "x": {
                         "type": "time",
                         "time": {
-                            "unit": "day",
+                            "unit": "hour" if interval == "hour" else "day",
                             "displayFormats": {
+                                "hour": "MMM dd HH:mm",
                                 "day": "MMM dd"
                             }
                         },
                         "title": {
                             "display": True,
-                            "text": "Date"
+                            "text": "Time" if interval == "hour" else "Date"
                         }
                     },
                     "y": {
@@ -2105,7 +2267,7 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
                 "plugins": {
                     "title": {
                         "display": True,
-                        "text": f"{symbol} - {period_label} OHLC Chart"
+                        "text": f"{symbol} - {period_label} {'Hourly' if interval == 'hour' else 'Daily'} OHLC Chart"
                     },
                     "legend": {
                         "display": False
@@ -2130,8 +2292,57 @@ async def get_stock_prices(symbol: str, period: str = "1m"):
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Root endpoint that returns the index.html page"""
-    with open("static/index.html", "r", encoding="utf-8") as f:
+    """Root endpoint that redirects to news page"""
+    return RedirectResponse(url="/news")
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for deployment monitoring"""
+    try:
+        # Test database connection
+        test_result = db_service.supabase.table("sources").select("count").execute()
+        db_status = "healthy" if test_result else "unhealthy"
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "database": db_status,
+            "version": "1.0.0",
+            "environment": os.getenv("ENVIRONMENT", "production")
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e),
+                "version": "1.0.0"
+            }
+        )
+
+@app.get("/news", response_class=HTMLResponse)
+async def news_page():
+    """News page endpoint"""
+    with open("static/news.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/analyze", response_class=HTMLResponse)
+async def analyze_page():
+    """Analyze page endpoint"""
+    with open("static/analyze.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/documents", response_class=HTMLResponse)
+async def documents_page():
+    """Documents page endpoint"""
+    with open("static/documents.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+@app.get("/technical-docs", response_class=HTMLResponse)
+async def technical_docs_page():
+    """Technical Documentation page endpoint"""
+    with open("static/technical-docs.html", "r", encoding="utf-8") as f:
         return f.read()
 
 @app.get("/vnindex-data")
@@ -2281,7 +2492,7 @@ async def get_vnindex_data(period: str = "1M"):
         )
 
 @app.post("/company-info/update")
-async def update_all_company_info():
+async def update_all_company_info(request: CompanyUpdateRequest):
     """
     Manual Company Info Update: Updates stock records with ICB codes and company information from VNStock
     """
@@ -2304,6 +2515,11 @@ async def update_all_company_info():
             })
         
         print(f"Found {len(symbols_df)} stocks with industry information")
+        
+        # Debug mode: filter to only VIC symbol
+        if request.debug:
+            symbols_df = symbols_df[symbols_df['symbol'] == 'VIC']
+            print(f"Debug mode enabled: Processing VIC only ({len(symbols_df)} records)")
         
         # Step 2: Process each stock
         updated_stocks = 0
@@ -2379,7 +2595,7 @@ async def update_all_company_info():
         raise HTTPException(status_code=500, detail=f"Company info update failed: {str(e)}")
 
 @app.post("/industries/update")
-async def update_industries_table():
+async def update_industries_table(request: CompanyUpdateRequest):
     """
     Update industries table with data from VNStock industries_icb() function
     """
@@ -2400,6 +2616,11 @@ async def update_industries_table():
             })
         
         print(f"Found {len(industries_df)} industries")
+        
+        # Debug mode: limit to first 10 industries only
+        if request.debug:
+            industries_df = industries_df.head(10)
+            print(f"Debug mode enabled: Processing only first {len(industries_df)} industries")
         
         # Step 2: Clear existing industries and insert new data
         print("Step 2: Updating industries table...")
@@ -2458,12 +2679,12 @@ async def update_industries_table():
         raise HTTPException(status_code=500, detail=f"Industries update failed: {str(e)}")
 
 @app.post("/stock-prices/update")
-async def update_stock_prices_manual():
+async def update_stock_prices_manual(request: CompanyUpdateRequest):
     """Manual update of stock prices for stocks mentioned in last 7 days"""
     try:
-        # Get all stocks mentioned in last 7 days
+        # Get all stocks mentioned in last 7 days with details
         print("Getting stocks mentioned in last 7 days...")
-        mentioned_stocks = await db_service.get_stocks_mentioned_in_last_n_days(7)
+        mentioned_stocks = await db_service.get_stocks_mentioned_in_last_n_days_with_details(7)
         
         if not mentioned_stocks:
             return JSONResponse(content={
@@ -2471,13 +2692,23 @@ async def update_stock_prices_manual():
                 "message": "No stocks found mentioned in last 7 days"
             })
         
-        print(f"Found {len(mentioned_stocks)} stocks mentioned in last 7 days")
+        # Debug mode: filter to only VIC symbol
+        if request.debug:
+            mentioned_stocks = [stock for stock in mentioned_stocks if stock['symbol'] == 'VIC']
+            if not mentioned_stocks:
+                mentioned_stocks = [{'symbol': 'VIC', 'id': None}]  # Force VIC for debug even if not mentioned
+            print(f"Debug mode enabled: Processing VIC only")
+        else:
+            print(f"Found {len(mentioned_stocks)} stocks mentioned in last 7 days")
         
         # Import the stock price updater
         from stock_price_updater import update_stock_prices_selective
         
+        # Extract just the symbols for the updater function
+        stock_symbols = [stock['symbol'] for stock in mentioned_stocks]
+        
         # Update prices only for stocks that need updates
-        result = update_stock_prices_selective(mentioned_stocks)
+        result = update_stock_prices_selective(stock_symbols)
         
         return JSONResponse(content={
             "success": True,
@@ -2494,8 +2725,161 @@ async def update_stock_prices_manual():
             "message": f"Failed to update stock prices: {str(e)}"
         }, status_code=500)
 
+@app.post("/stock-prices-hourly/update")
+async def update_stock_prices_hourly_manual(request: CompanyUpdateRequest):
+    """Manual update of hourly stock prices for stocks mentioned in last 30 days"""
+    try:
+        # Get all stocks mentioned in last 30 days
+        print("Getting stocks mentioned in last 30 days...")
+        mentioned_stocks = await db_service.get_stocks_mentioned_in_last_n_days_with_details(30)
+        
+        if not mentioned_stocks:
+            return JSONResponse(content={
+                "success": False,
+                "message": "No stocks found mentioned in last 30 days",
+                "updated_stocks": [],
+                "failed_stocks": []
+            })
+        
+        # Debug mode: filter to only VIC symbol
+        if request.debug:
+            mentioned_stocks = [stock for stock in mentioned_stocks if stock['symbol'] == 'VIC']
+            if not mentioned_stocks:
+                mentioned_stocks = [{'symbol': 'VIC'}]  # Force VIC for debug even if not mentioned
+            print(f"Debug mode enabled: Processing VIC only")
+        else:
+            print(f"Found {len(mentioned_stocks)} stocks mentioned in last 30 days")
+        
+        # Import required modules
+        from vnstock import Vnstock
+        import pandas as pd
+        from datetime import datetime, timedelta
+        import time
+        
+        updated_stocks = []
+        failed_stocks = []
+        
+        # Calculate date range (last 30 days)
+        today = datetime.now().date()
+        start_date = (today - timedelta(days=30)).isoformat()
+        end_date = today.isoformat()
+        
+        for stock_info in mentioned_stocks:
+            stock_symbol = stock_info["symbol"]
+            stock_id = stock_info["id"]
+            
+            print(f"\nProcessing hourly data for {stock_symbol}...")
+            
+            try:
+                # Check if we already have recent hourly data
+                existing_data = db_service.supabase.table("stock_prices_hourly").select(
+                    "date"
+                ).eq("stock_id", stock_id).gte("date", start_date).order("date.desc").limit(1).execute()
+                
+                if existing_data.data:
+                    last_date = existing_data.data[0]["date"]
+                    print(f"✓ Already has hourly data up to {last_date}, skipping {stock_symbol}")
+                    continue
+                
+                # Fetch hourly data from vnstock with retry logic
+                stock = Vnstock().stock(symbol=stock_symbol, source='VCI')
+                
+                max_retries = 3
+                retry_delay = 2
+                df = None
+                
+                for attempt in range(max_retries):
+                    try:
+                        print(f"  Attempt {attempt + 1}: Fetching hourly data for {stock_symbol}...")
+                        df = stock.quote.history(start=start_date, end=end_date, interval='1H')
+                        break
+                    except Exception as e:
+                        error_msg = str(e).lower()
+                        if ("rate limit" in error_msg or "too many requests" in error_msg) and attempt < max_retries - 1:
+                            print(f"  Rate limit hit, retrying in {retry_delay} seconds...")
+                            time.sleep(retry_delay)
+                            retry_delay *= 2  # Exponential backoff
+                        else:
+                            raise e
+                
+                if df is not None and not df.empty:
+                    # Process and insert hourly data
+                    hourly_records = []
+                    
+                    for index, row in df.iterrows():
+                        # Extract date and hour from index (datetime)
+                        dt = pd.to_datetime(index)
+                        date_str = dt.date().isoformat()
+                        hour_str = dt.time().isoformat()
+                        
+                        hourly_records.append({
+                            "stock_id": stock_id,
+                            "date": date_str,
+                            "hour": hour_str,
+                            "open": float(row.get('open', 0)),
+                            "high": float(row.get('high', 0)),
+                            "low": float(row.get('low', 0)),
+                            "close": float(row.get('close', 0)),
+                            "volume": int(row.get('volume', 0))
+                        })
+                    
+                    # Insert hourly data in batches to avoid conflicts
+                    if hourly_records:
+                        db_service.supabase.table("stock_prices_hourly").upsert(hourly_records).execute()
+                        print(f"✓ Inserted {len(hourly_records)} hourly price records for {stock_symbol}")
+                        
+                        updated_stocks.append({
+                            "symbol": stock_symbol,
+                            "records_count": len(hourly_records),
+                            "status": "success"
+                        })
+                    else:
+                        print(f"✗ No valid records to insert for {stock_symbol}")
+                        failed_stocks.append({
+                            "symbol": stock_symbol,
+                            "error": "No valid hourly data available"
+                        })
+                else:
+                    print(f"✗ No hourly data available for {stock_symbol}")
+                    failed_stocks.append({
+                        "symbol": stock_symbol,
+                        "error": "No hourly data returned from vnstock"
+                    })
+                    
+                # Add delay between requests to avoid rate limiting
+                time.sleep(1)
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"✗ Error processing {stock_symbol}: {error_msg}")
+                failed_stocks.append({
+                    "symbol": stock_symbol,
+                    "error": error_msg
+                })
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": f"Hourly price update completed",
+            "summary": {
+                "total_stocks": len(mentioned_stocks),
+                "updated_stocks": len(updated_stocks),
+                "failed_stocks": len(failed_stocks)
+            },
+            "updated_stocks": updated_stocks,
+            "failed_stocks": failed_stocks
+        })
+        
+    except Exception as e:
+        print(f"Error in manual hourly stock price update: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(content={
+            "success": False,
+            "message": f"Failed to update hourly stock prices: {str(e)}"
+        }, status_code=500)
+
 @app.post("/company-events/update")
-async def update_all_company_events():
+async def update_all_company_events(request: CompanyUpdateRequest):
     """
     Delete all stock events and update with fresh data from vnstock for stocks mentioned in last 30 days
     """
@@ -2518,7 +2902,13 @@ async def update_all_company_events():
             })
         
         stock_symbols = [stock["symbol"] for stock in recent_stocks]
-        print(f"Found {len(stock_symbols)} stocks to update: {', '.join(stock_symbols)}")
+        
+        # Debug mode: filter to only VIC symbol
+        if request.debug:
+            stock_symbols = ['VIC']
+            print(f"Debug mode enabled: Processing VIC only")
+        else:
+            print(f"Found {len(stock_symbols)} stocks to update: {', '.join(stock_symbols)}")
         
         # Step 2: Delete all existing stock events
         print("Step 2: Deleting all existing stock events...")
@@ -2618,7 +3008,7 @@ async def update_all_company_events():
         raise HTTPException(status_code=500, detail=f"Company events update failed: {str(e)}")
 
 @app.post("/company-dividends/update")
-async def update_all_company_dividends():
+async def update_all_company_dividends(request: CompanyUpdateRequest):
     """
     Delete all stock dividends and update with fresh data from vnstock for stocks mentioned in last 30 days
     """
@@ -2640,7 +3030,13 @@ async def update_all_company_dividends():
             })
         
         stock_symbols = [stock["symbol"] for stock in recent_stocks]
-        print(f"Found {len(stock_symbols)} stocks to update dividends: {', '.join(stock_symbols)}")
+        
+        # Debug mode: filter to only VIC symbol
+        if request.debug:
+            stock_symbols = ['VIC']
+            print(f"Debug mode enabled: Processing VIC only")
+        else:
+            print(f"Found {len(stock_symbols)} stocks to update dividends: {', '.join(stock_symbols)}")
         
         # Step 2: Delete all existing stock dividends
         print("Step 2: Deleting all existing stock dividends...")
@@ -2738,6 +3134,175 @@ async def update_all_company_dividends():
         import traceback
         print(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Company dividends update failed: {str(e)}")
+
+
+@app.post("/company-finance/update")
+async def update_all_company_finance(request: CompanyUpdateRequest):
+    """
+    Update financial data for stocks mentioned in last 30 days using VNStock
+    
+    Returns:
+        JSON with update results including statistics
+    """
+    try:
+        from company_finance_updater import CompanyFinanceUpdater
+        
+        print("=== Starting Company Finance Update ===")
+        finance_updater = CompanyFinanceUpdater()
+        
+        # Step 1: Get stock symbols mentioned in last 30 days
+        print("Step 1: Getting stocks mentioned in last 30 days...")
+        
+        cutoff_date = (datetime.now() - timedelta(days=30)).date()
+        mentioned_stocks_result = db_service.supabase.table("post_mentioned_stocks").select(
+            "stocks(symbol)"
+        ).gte("created_at", cutoff_date.isoformat()).execute()
+        
+        if not mentioned_stocks_result.data:
+            return {
+                "message": "No stocks mentioned in the last 30 days",
+                "updated_stocks": [],
+                "total_finance_records_added": 0
+            }
+        
+        # Extract unique stock symbols
+        stock_symbols = list(set([
+            item["stocks"]["symbol"] for item in mentioned_stocks_result.data 
+            if item["stocks"] and item["stocks"]["symbol"]
+        ]))
+        
+        # Debug mode: filter to only VIC symbol
+        if request.debug:
+            stock_symbols = ['VIC']
+            print(f"Debug mode enabled: Processing VIC only")
+        else:
+            print(f"Found {len(stock_symbols)} stocks to update finance data: {', '.join(stock_symbols)}")
+        
+        # Step 2: Update finance data for each stock
+        print("Step 2: Fetching finance data from VNStock for each stock...")
+        updated_stocks = []
+        
+        for i, stock_symbol in enumerate(stock_symbols):
+            try:
+                print(f"\nProcessing finance data for {stock_symbol} ({i+1}/{len(stock_symbols)})...")
+                
+                # Add delay between stocks to avoid rate limiting
+                if i > 0:
+                    print("Waiting 10 seconds between stocks to avoid rate limits...")
+                    time.sleep(10)
+                
+                # Get comprehensive finance data with better error handling
+                finance_df = finance_updater.get_company_finance_data(stock_symbol)
+                
+                if finance_df is not None and not finance_df.empty:
+                    # Prepare data for database
+                    finance_records = finance_updater.prepare_finance_data_for_db(finance_df, stock_symbol)
+                    print(f"✓ Retrieved {len(finance_records)} finance records for {stock_symbol}")
+                    
+                    # Update database
+                    success = await db_service.update_company_finance(stock_symbol, finance_records)
+                    
+                    if success:
+                        updated_stocks.append({
+                            "symbol": stock_symbol,
+                            "finance_records_count": len(finance_records),
+                            "status": "success"
+                        })
+                        print(f"✓ Successfully updated {stock_symbol} with {len(finance_records)} finance records")
+                    else:
+                        updated_stocks.append({
+                            "symbol": stock_symbol,
+                            "finance_records_count": 0,
+                            "status": "failed"
+                        })
+                        print(f"✗ Failed to update finance data for {stock_symbol}")
+                else:
+                    print(f"⚠️ No finance data found for {stock_symbol}")
+                    updated_stocks.append({
+                        "symbol": stock_symbol,
+                        "finance_records_count": 0,
+                        "status": "no_data"
+                    })
+                
+            except Exception as stock_error:
+                error_message = str(stock_error)
+                print(f"✗ Error processing finance data for {stock_symbol}: {error_message}")
+                
+                # Check if it's a rate limiting error
+                if "quá nhiều request" in error_message.lower() or "rate limit" in error_message.lower():
+                    print("⚠️ Rate limit detected. Waiting 30 seconds before continuing...")
+                    time.sleep(30)
+                    
+                    # Retry once after rate limit
+                    try:
+                        print(f"Retrying finance data for {stock_symbol}...")
+                        finance_df = finance_updater.get_company_finance_data(stock_symbol)
+                        
+                        if finance_df is not None and not finance_df.empty:
+                            finance_records = finance_updater.prepare_finance_data_for_db(finance_df, stock_symbol)
+                            success = await db_service.update_company_finance(stock_symbol, finance_records)
+                            
+                            if success:
+                                updated_stocks.append({
+                                    "symbol": stock_symbol,
+                                    "finance_records_count": len(finance_records),
+                                    "status": "success"
+                                })
+                                print(f"✓ Retry successful for {stock_symbol}")
+                            else:
+                                updated_stocks.append({
+                                    "symbol": stock_symbol,
+                                    "finance_records_count": 0,
+                                    "status": "failed"
+                                })
+                        else:
+                            updated_stocks.append({
+                                "symbol": stock_symbol,
+                                "finance_records_count": 0,
+                                "status": "no_data"
+                            })
+                    except Exception as retry_error:
+                        print(f"✗ Retry also failed for {stock_symbol}: {str(retry_error)}")
+                        updated_stocks.append({
+                            "symbol": stock_symbol,
+                            "finance_records_count": 0,
+                            "status": "error",
+                            "error": f"Rate limit retry failed: {str(retry_error)}"
+                        })
+                else:
+                    updated_stocks.append({
+                        "symbol": stock_symbol,
+                        "finance_records_count": 0,
+                        "status": "error",
+                        "error": error_message
+                    })
+        
+        # Step 3: Summary
+        total_finance_records_added = sum(stock["finance_records_count"] for stock in updated_stocks if "finance_records_count" in stock)
+        successful_updates = len([stock for stock in updated_stocks if stock.get("status") == "success"])
+        
+        print(f"\n=== Company Finance Update Summary ===")
+        print(f"Stocks processed: {len(stock_symbols)}")
+        print(f"Successful updates: {successful_updates}")
+        print(f"Total finance records added: {total_finance_records_added}")
+        
+        return {
+            "message": f"Company finance update completed. Updated {successful_updates} stocks with {total_finance_records_added} total finance records.",
+            "summary": {
+                "stocks_processed": len(stock_symbols),
+                "successful_updates": successful_updates,
+                "total_finance_records_added": total_finance_records_added
+            },
+            "updated_stocks": updated_stocks
+        }
+        
+    except Exception as e:
+        print(f"Critical error during company finance update: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        raise HTTPException(status_code=500, detail=f"Company finance update failed: {str(e)}")
+
 
 @app.get("/company-update", response_class=HTMLResponse)
 async def company_update_page():

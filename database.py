@@ -1,5 +1,6 @@
 import os
 import uuid
+import pandas as pd
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional, Any
 from supabase import create_client, Client
@@ -434,6 +435,45 @@ class DatabaseService:
             
         except Exception as e:
             print(f"Error getting stocks mentioned in last {days} days: {e}")
+            return []
+    
+    async def get_stocks_mentioned_in_last_n_days_with_details(self, days: int = 7) -> List[Dict[str, Any]]:
+        """
+        Get all unique stocks mentioned in posts from the last N days with their details
+        
+        Args:
+            days: Number of days to look back
+            
+        Returns:
+            List of stock dictionaries with id, symbol, and other details
+        """
+        try:
+            cutoff_date = (datetime.now() - timedelta(days=days)).date()
+            
+            # Query posts and their mentioned stocks from last N days
+            result = self.supabase.table("posts") \
+                .select("post_mentioned_stocks(stocks(id, symbol, organ_name))") \
+                .gte("created_date", cutoff_date.isoformat()) \
+                .execute()
+            
+            # Extract unique stocks with details
+            stocks_map = {}
+            for post in result.data:
+                for mention in post.get("post_mentioned_stocks", []):
+                    if mention.get("stocks") and mention["stocks"].get("symbol"):
+                        stock = mention["stocks"]
+                        symbol = stock["symbol"]
+                        if symbol not in stocks_map:
+                            stocks_map[symbol] = {
+                                "id": stock["id"],
+                                "symbol": symbol,
+                                "organ_name": stock.get("organ_name", "")
+                            }
+            
+            return list(stocks_map.values())
+            
+        except Exception as e:
+            print(f"Error getting stocks mentioned in last {days} days with details: {e}")
             return []
     
     async def get_dashboard_stats(self) -> Dict[str, Any]:
@@ -1087,6 +1127,153 @@ class DatabaseService:
         except Exception as e:
             print(f"✗ Error getting structured analysis for {stock_symbol} in {post_url}: {e}")
             return {}
+    
+    async def update_company_finance(self, stock_symbol: str, finance_data: List[Dict[str, Any]]) -> bool:
+        """
+        Update company_finance table with financial data from VNStock
+        
+        Args:
+            stock_symbol: Stock symbol (e.g., 'ACB')
+            finance_data: List of dictionaries containing financial data by quarter
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Get stock ID
+            stock_result = self.supabase.table("stocks").select("id").eq("symbol", stock_symbol).execute()
+            
+            if not stock_result.data:
+                print(f"Stock {stock_symbol} not found for finance update")
+                return False
+            
+            stock_id = stock_result.data[0]["id"]
+            
+            # Process each finance record
+            updated_count = 0
+            for finance_record in finance_data:
+                try:
+                    # Prepare standard financial fields
+                    db_finance = {
+                        "stock_id": stock_id,
+                        "symbol": stock_symbol,
+                        "quarter": finance_record.get("quarter"),
+                        "year": int(finance_record.get("year")) if finance_record.get("year") else None,
+                        
+                        # Balance Sheet Data
+                        "total_assets": self._safe_float(finance_record.get("total_assets")),
+                        "current_assets": self._safe_float(finance_record.get("current_assets")),
+                        "non_current_assets": self._safe_float(finance_record.get("non_current_assets")),
+                        "total_liabilities": self._safe_float(finance_record.get("total_liabilities")),
+                        "current_liabilities": self._safe_float(finance_record.get("current_liabilities")),
+                        "non_current_liabilities": self._safe_float(finance_record.get("non_current_liabilities")),
+                        "shareholders_equity": self._safe_float(finance_record.get("shareholders_equity")),
+                        
+                        # Income Statement Data
+                        "revenue": self._safe_float(finance_record.get("revenue")),
+                        "gross_profit": self._safe_float(finance_record.get("gross_profit")),
+                        "operating_profit": self._safe_float(finance_record.get("operating_profit")),
+                        "net_profit": self._safe_float(finance_record.get("net_profit")),
+                        "ebit": self._safe_float(finance_record.get("ebit")),
+                        "ebitda": self._safe_float(finance_record.get("ebitda")),
+                        
+                        # Cash Flow Data
+                        "operating_cash_flow": self._safe_float(finance_record.get("operating_cash_flow")),
+                        "investing_cash_flow": self._safe_float(finance_record.get("investing_cash_flow")),
+                        "financing_cash_flow": self._safe_float(finance_record.get("financing_cash_flow")),
+                        "net_cash_flow": self._safe_float(finance_record.get("net_cash_flow")),
+                        "free_cash_flow": self._safe_float(finance_record.get("free_cash_flow")),
+                        
+                        # Financial Ratios
+                        "eps": self._safe_float(finance_record.get("eps")),
+                        "book_value_per_share": self._safe_float(finance_record.get("book_value_per_share")),
+                        "roe": self._safe_float(finance_record.get("roe")),
+                        "roa": self._safe_float(finance_record.get("roa")),
+                        "current_ratio": self._safe_float(finance_record.get("current_ratio")),
+                        "debt_to_equity": self._safe_float(finance_record.get("debt_to_equity")),
+                        "profit_margin": self._safe_float(finance_record.get("profit_margin")),
+                        "revenue_growth": self._safe_float(finance_record.get("revenue_growth")),
+                        
+                        # Additional data - store any extra columns
+                        "additional_data": self._extract_additional_finance_data(finance_record),
+                        "updated_at": datetime.now().isoformat()
+                    }
+                    
+                    # Use upsert to avoid duplicates based on unique constraint (stock_id, quarter, year)
+                    result = self.supabase.table("company_finance").upsert(
+                        db_finance, 
+                        on_conflict="stock_id,quarter,year"
+                    ).execute()
+                    
+                    if result.data:
+                        updated_count += 1
+                        quarter_year = f"{finance_record.get('quarter', 'Unknown')}/{finance_record.get('year', 'Unknown')}"
+                        print(f"✓ Finance data updated for {stock_symbol}: {quarter_year}")
+                    
+                except Exception as finance_error:
+                    print(f"✗ Error processing finance data for {stock_symbol}: {finance_error}")
+                    continue
+            
+            print(f"✓ Updated {updated_count} finance records for {stock_symbol}")
+            return updated_count > 0
+            
+        except Exception as e:
+            print(f"✗ Error updating company finance for {stock_symbol}: {e}")
+            return False
+    
+    def _safe_float(self, value) -> Optional[float]:
+        """Safely convert value to float, return None if not possible"""
+        if value is None or pd.isna(value):
+            return None
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+    
+    def _extract_additional_finance_data(self, finance_record: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract additional financial data that doesn't fit standard columns"""
+        # Standard columns that we store separately
+        standard_fields = {
+            'quarter', 'year', 'symbol', 'total_assets', 'current_assets', 'non_current_assets',
+            'total_liabilities', 'current_liabilities', 'non_current_liabilities', 'shareholders_equity',
+            'revenue', 'gross_profit', 'operating_profit', 'net_profit', 'ebit', 'ebitda',
+            'operating_cash_flow', 'investing_cash_flow', 'financing_cash_flow', 'net_cash_flow', 'free_cash_flow',
+            'eps', 'book_value_per_share', 'roe', 'roa', 'current_ratio', 'debt_to_equity', 'profit_margin', 'revenue_growth'
+        }
+        
+        # Extract any additional fields
+        additional_data = {}
+        for key, value in finance_record.items():
+            if key not in standard_fields and value is not None and not pd.isna(value):
+                # Convert to appropriate type
+                if isinstance(value, (int, float)):
+                    additional_data[key] = float(value)
+                else:
+                    additional_data[key] = str(value)
+        
+        return additional_data if additional_data else None
+    
+    async def get_company_finance(self, stock_symbol: str, limit: int = 12) -> List[Dict[str, Any]]:
+        """
+        Get company finance data for a stock symbol
+        
+        Args:
+            stock_symbol: Stock symbol (e.g., 'ACB')
+            limit: Maximum number of records to return (default: 12 quarters)
+            
+        Returns:
+            List of financial data records ordered by year/quarter desc
+        """
+        try:
+            result = self.supabase.table("company_finance").select("*").eq(
+                "symbol", stock_symbol
+            ).order("year", desc=True).order("quarter", desc=True).limit(limit).execute()
+            
+            return result.data or []
+            
+        except Exception as e:
+            print(f"✗ Error getting company finance for {stock_symbol}: {e}")
+            return []
 
 # Global database service instance
 db_service = DatabaseService()

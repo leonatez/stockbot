@@ -203,3 +203,5 @@ For detailed information about how the system works when users click "Start Anal
 - Error handling and performance optimizations
 
 If there are any requests to adjust or understand the workflow, always refer to and update the workflow.md file accordingly. 
+- Always update schema.md for the project once making any update to the supabase database
+- before calling any API to the fastapi, check if it offer Debug mode first, this is the mode where the app fully function on just 1 stock, not all, to save time and token
