@@ -3354,6 +3354,104 @@ async def test_date_logic(days: int = 1):
     }
 
 
+# Math Game Endpoints for Kids
+class MathQuestion(BaseModel):
+    question: str
+    answer: int
+    options: List[int]
+
+class MathGameRequest(BaseModel):
+    max_number: int
+
+class MathGameResponse(BaseModel):
+    questions: List[MathQuestion]
+
+class MathAnswerRequest(BaseModel):
+    answers: List[int]
+    correct_answers: List[int]
+
+class MathAnswerResponse(BaseModel):
+    score: int
+    total: int
+    percentage: float
+    message: str
+
+@app.get("/math", response_class=HTMLResponse)
+async def math_game():
+    """Hidden math game for kids"""
+    with open("static/math_game.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
+@app.post("/math/generate", response_model=MathGameResponse)
+async def generate_math_questions(request: MathGameRequest):
+    """Generate 10 random math questions"""
+    questions = []
+    max_num = min(request.max_number, 100)  # Cap at 100 for safety
+    
+    for _ in range(10):
+        # Randomly choose between addition and subtraction
+        operation = random.choice(['+', '-'])
+        
+        if operation == '+':
+            # For addition, ensure sum doesn't exceed max_number
+            num1 = random.randint(1, max_num // 2)
+            num2 = random.randint(1, max_num - num1)
+            answer = num1 + num2
+            question = f"{num1} + {num2} = ?"
+        else:
+            # For subtraction, ensure positive result
+            num1 = random.randint(2, max_num)
+            num2 = random.randint(1, num1)
+            answer = num1 - num2
+            question = f"{num1} - {num2} = ?"
+        
+        # Generate wrong options
+        wrong_options = []
+        while len(wrong_options) < 3:
+            wrong = answer + random.randint(-10, 10)
+            if wrong != answer and wrong >= 0 and wrong not in wrong_options:
+                wrong_options.append(wrong)
+        
+        # Create options list with correct answer
+        options = [answer] + wrong_options
+        random.shuffle(options)
+        
+        questions.append(MathQuestion(
+            question=question,
+            answer=answer,
+            options=options
+        ))
+    
+    return MathGameResponse(questions=questions)
+
+@app.post("/math/check", response_model=MathAnswerResponse)
+async def check_math_answers(request: MathAnswerRequest):
+    """Check answers and provide motivational message"""
+    correct_count = sum(1 for user_ans, correct_ans in zip(request.answers, request.correct_answers) 
+                       if user_ans == correct_ans)
+    total = len(request.correct_answers)
+    percentage = (correct_count / total) * 100
+    
+    # Motivational messages based on score
+    if percentage == 100:
+        message = "🌟 Perfect! You're a math superstar! 🌟"
+    elif percentage >= 80:
+        message = "🎉 Excellent work! You're amazing at math! 🎉"
+    elif percentage >= 60:
+        message = "👍 Great job! Keep practicing and you'll be even better! 👍"
+    elif percentage >= 40:
+        message = "💪 Good effort! Practice makes perfect! 💪"
+    else:
+        message = "🌈 Don't worry! Every mathematician started somewhere. Try again! 🌈"
+    
+    return MathAnswerResponse(
+        score=correct_count,
+        total=total,
+        percentage=percentage,
+        message=message
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
     import os

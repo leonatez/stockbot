@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌈 Super Fun Math Game! 🌈</title>
+    <link rel="stylesheet" href="/static/math_game.css">
+</head>
+<body>
+    <!-- Floating math symbols -->
+    <div class="math-symbol">+</div>
+    <div class="math-symbol">-</div>
+    <div class="math-symbol">=</div>
+    <div class="math-symbol">?</div>
+
+    <div class="container">
+        <h1>🧮 Super Fun Math Game! 🚀</h1>
+        
+        <!-- Setup Section -->
+        <div id="setup-section" class="setup-section">
+            <label for="max-number">📊 Choose the biggest number for your math adventure:</label>
+            <input type="number" id="max-number" value="20" min="5" max="100">
+            <br><br>
+            <button class="btn btn-primary" onclick="startGame()">🎮 Start Playing! 🎮</button>
+        </div>
+
+        <!-- Game Section -->
+        <div id="game-section" class="hidden">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+            <div id="current-question">Question will appear here</div>
+            <div class="text-center" style="margin: 20px 0;">
+                <button class="btn btn-success" onclick="submitAnswer()" id="submit-btn" disabled>
+                    ✨ Answer! ✨
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="hidden">
+            <div class="score-display">
+                <div class="score-number" id="final-score">0/10</div>
+                <div class="motivation-message" id="motivation-message">Great job!</div>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-info" onclick="playAgain()">🔄 Play Again! 🔄</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentGame = {
+            questions: [],
+            currentQuestionIndex: 0,
+            userAnswers: [],
+            correctAnswers: []
+        };
+
+        async function startGame() {
+            const maxNumber = parseInt(document.getElementById('max-number').value);
+            
+            if (maxNumber < 5 || maxNumber > 100) {
+                alert('🤔 Please choose a number between 5 and 100! 🤔');
+                return;
+            }
+
+            try {
+                const response = await fetch('/math/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ max_number: maxNumber })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate questions');
+                }
+
+                const data = await response.json();
+                currentGame.questions = data.questions;
+                currentGame.correctAnswers = data.questions.map(q => q.answer);
+                currentGame.currentQuestionIndex = 0;
+                currentGame.userAnswers = [];
+
+                // Hide setup, show game
+                document.getElementById('setup-section').classList.add('hidden');
+                document.getElementById('game-section').classList.remove('hidden');
+                document.getElementById('results-section').classList.add('hidden');
+
+                displayCurrentQuestion();
+            } catch (error) {
+                console.error('Error starting game:', error);
+                alert('😅 Oops! Something went wrong. Please try again! 😅');
+            }
+        }
+
+        function displayCurrentQuestion() {
+            const question = currentGame.questions[currentGame.currentQuestionIndex];
+            const questionContainer = document.getElementById('current-question');
+            
+            // Update progress bar
+            const progress = ((currentGame.currentQuestionIndex + 1) / currentGame.questions.length) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+
+            questionContainer.innerHTML = `
+                <div class="question-container">
+                    <div class="question-number">
+                        Question ${currentGame.currentQuestionIndex + 1} of ${currentGame.questions.length}
+                    </div>
+                    <div class="question-text">${question.question}</div>
+                    <div class="options">
+                        ${question.options.map((option, index) => `
+                            <div class="option" onclick="selectOption(${option}, this)">
+                                ${option}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            // Disable submit button until an option is selected
+            document.getElementById('submit-btn').disabled = true;
+        }
+
+        function selectOption(value, element) {
+            // Remove previous selections
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            // Select current option
+            element.classList.add('selected');
+            currentGame.selectedAnswer = value;
+            
+            // Enable submit button
+            document.getElementById('submit-btn').disabled = false;
+        }
+
+        function submitAnswer() {
+            if (currentGame.selectedAnswer === undefined) {
+                return;
+            }
+
+            // Store the answer
+            currentGame.userAnswers.push(currentGame.selectedAnswer);
+            currentGame.selectedAnswer = undefined;
+
+            // Move to next question or show results
+            currentGame.currentQuestionIndex++;
+            
+            if (currentGame.currentQuestionIndex < currentGame.questions.length) {
+                displayCurrentQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        async function showResults() {
+            try {
+                const response = await fetch('/math/check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        answers: currentGame.userAnswers,
+                        correct_answers: currentGame.correctAnswers
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to check answers');
+                }
+
+                const results = await response.json();
+                
+                // Hide game section, show results
+                document.getElementById('game-section').classList.add('hidden');
+                document.getElementById('results-section').classList.remove('hidden');
+
+                // Display results
+                document.getElementById('final-score').textContent = 
+                    `${results.score}/${results.total} (${Math.round(results.percentage)}%)`;
+                document.getElementById('motivation-message').textContent = results.message;
+
+                // Add confetti for good scores
+                if (results.percentage >= 70) {
+                    createConfetti();
+                }
+
+            } catch (error) {
+                console.error('Error checking answers:', error);
+                alert('😅 Oops! Something went wrong checking your answers. 😅');
+            }
+        }
+
+        function playAgain() {
+            // Show setup section again
+            document.getElementById('setup-section').classList.remove('hidden');
+            document.getElementById('game-section').classList.add('hidden');
+            document.getElementById('results-section').classList.add('hidden');
+            
+            // Reset game state
+            currentGame = {
+                questions: [],
+                currentQuestionIndex: 0,
+                userAnswers: [],
+                correctAnswers: []
+            };
+        }
+
+        function createConfetti() {
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffa726', '#ab47bc'];
+            
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                    document.body.appendChild(confetti);
+                    
+                    // Remove confetti after animation
+                    setTimeout(() => {
+                        if (confetti.parentNode) {
+                            confetti.parentNode.removeChild(confetti);
+                        }
+                    }, 5000);
+                }, i * 100);
+            }
+        }
+
+        // Allow Enter key to submit answers
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const submitBtn = document.getElementById('submit-btn');
+                if (!submitBtn.disabled && !submitBtn.classList.contains('hidden')) {
+                    submitAnswer();
+                }
+            }
+        });
+
+        // Add some extra fun with keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            if (event.key >= '1' && event.key <= '4') {
+                const options = document.querySelectorAll('.option');
+                const optionIndex = parseInt(event.key) - 1;
+                if (options[optionIndex]) {
+                    const optionValue = parseInt(options[optionIndex].textContent);
+                    selectOption(optionValue, options[optionIndex]);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
