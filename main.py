@@ -266,6 +266,17 @@ def health_check():
     """Health check endpoint for Docker containers"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
+@app.get("/test")
+def test_deployment():
+    """Test endpoint to verify auto-deployment is working"""
+    deployment_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+    return {
+        "message": "Auto-deployment is working! 🚀",
+        "deployed_at": deployment_time,
+        "git_push_time": "2025-08-18 18:30:00 UTC",
+        "status": "success"
+    }
+
 # Add validation error handler
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
