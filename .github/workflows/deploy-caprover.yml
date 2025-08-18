@@ -24,4 +24,5 @@ jobs:
         caprover deploy \
           --caproverUrl https://captain.appos.vn \
           --caproverPassword ${{ secrets.CAPROVER_PASSWORD }} \
-          --appName stockbot
+          --appName stockbot \
+          --branch master
