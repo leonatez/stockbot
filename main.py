@@ -260,6 +260,11 @@ def cleanup_drivers():
 # Register cleanup function
 atexit.register(cleanup_drivers)
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint for Docker containers"""
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
 # Add validation error handler
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
