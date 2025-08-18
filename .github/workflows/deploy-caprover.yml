@@ -1,0 +1,28 @@
+name: Deploy to CapRover
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install CapRover CLI
+      run: npm install -g caprover
+    
+    - name: Deploy to CapRover
+      run: |
+        caprover deploy \
+          --caproverUrl https://captain.appos.vn \
+          --caproverPassword ${{ secrets.CAPROVER_PASSWORD }} \
+          --caproverAppName stockbot \
+          --imageName stockbot
