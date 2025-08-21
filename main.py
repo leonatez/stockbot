@@ -29,10 +29,13 @@ from database import db_service
 from daily_vn30_update import daily_vn30_update
 from stock_price_updater import update_mentioned_stocks_prices
 from company_info_updater import update_company_information
+from debug_logger import get_debug_logger, reset_debug_logger, initialize_debug_session
+from chrome_driver_fix import get_chrome_driver as get_robust_chrome_driver, return_chrome_driver as return_robust_chrome_driver
 import tempfile
 from urllib.parse import urljoin, urlparse
 import requests
 from markitdown import MarkItDown
+import traceback
 
 
 load_dotenv()
@@ -218,35 +221,12 @@ def create_stealth_driver():
             return None
 
 def get_driver():
-    """Get a driver from the pool or create a new one"""
-    with driver_lock:
-        try:
-            driver = driver_pool.get_nowait()
-            # Check if driver is still alive
-            try:
-                driver.current_url
-                return driver
-            except Exception:
-                # Driver is dead, create a new one
-                try:
-                    driver.quit()
-                except:
-                    pass
-                return create_stealth_driver()
-        except queue.Empty:
-            return create_stealth_driver()
+    """Get a driver using robust Chrome driver manager"""
+    return get_robust_chrome_driver()
 
 def return_driver(driver):
-    """Return a driver to the pool"""
-    if driver:
-        with driver_lock:
-            if driver_pool.qsize() < MAX_DRIVERS:
-                driver_pool.put(driver)
-            else:
-                try:
-                    driver.quit()
-                except:
-                    pass
+    """Return a driver using robust Chrome driver manager"""
+    return_robust_chrome_driver(driver)
 
 def cleanup_drivers():
     """Cleanup all drivers"""
@@ -713,7 +693,7 @@ def process_pdf_content(tree: html.HtmlElement, xpath: str, base_url: str = None
         print(f"Error processing PDF content: {e}")
         return ""
 
-async def crawl_posts(request: CrawlRequest, days: int = 3, debug: bool = False) -> tuple[List[dict], int]:
+async def crawl_posts(request: CrawlRequest, days: int = 3, debug: bool = False, debug_logger=None, op_id=None) -> tuple[List[dict], int]:
     """Crawl posts and return those within specified days using Selenium"""
     collected_posts = []
     total_posts_found = 0
@@ -755,6 +735,11 @@ async def crawl_posts(request: CrawlRequest, days: int = 3, debug: bool = False)
         try:
             post_elements = tree.xpath(request.xpath)
             print(f"Found {len(post_elements)} post elements on page {page}")
+            
+            # Log page crawl if debug logger available
+            if debug_logger and op_id:
+                debug_logger.log_page_crawl(op_id, page, current_url, len(post_elements))
+                
         except Exception as e:
             print(f"Error with xpath '{request.xpath}': {e}")
             break
@@ -906,10 +891,20 @@ async def crawl_posts(request: CrawlRequest, days: int = 3, debug: bool = False)
 @app.post("/crawl")
 async def crawl_endpoint(request: CrawlRequest):
     """Crawl posts from the specified URL and return stock-level analysis"""
+    # Initialize debug logging session
+    debug_logger = initialize_debug_session()
+    
     try:
         print(f"\n=== Received Request ===")
         print(f"Raw request: {request}")
         print(f"Request dict: {request.dict()}")
+        
+        # Log crawl start
+        op_id = debug_logger.log_crawl_start(
+            request_data=request.dict(),
+            source_name=request.sourceName,
+            url=request.url
+        )
         
         # Perform daily VN30 update at the start of analysis
         print(f"\n=== Daily VN30 Update ===")
@@ -928,7 +923,7 @@ async def crawl_endpoint(request: CrawlRequest):
         print(f"Date XPath: {request.contentDateXpath}")
         
         # Crawl posts (default to 3 days for single crawl)
-        collected_posts, total_posts_found = await crawl_posts(request, days=3)
+        collected_posts, total_posts_found = await crawl_posts(request, days=3, debug_logger=debug_logger, op_id=op_id)
         
         print(f"\n=== Crawl Summary ===")
         print(f"Total posts found: {total_posts_found}")
@@ -958,6 +953,16 @@ async def crawl_endpoint(request: CrawlRequest):
             print(f"Date: {post['date']}")
             print(f"Content preview: {post['content'][:200]}...")
             
+            # Log post extraction
+            debug_logger.log_post_extraction(
+                op_id=op_id,
+                post_url=post['url'],
+                post_date=post['date'],
+                content_length=len(post['content']),
+                content_preview=post['content'][:500],
+                source_type=request.sourceType
+            )
+            
             try:
                 # Check if this post already has existing analysis data
                 if 'existing_data' in post:
@@ -973,11 +978,36 @@ async def crawl_endpoint(request: CrawlRequest):
                     ]
                 else:
                     print(f"✓ Running fresh AI analysis for new post")
+                    
+                    # Log Gemini call
+                    call_type = "pdf_analysis" if hasattr(request, 'contentType') and request.contentType == 'pdf' else "individual_post_analysis"
+                    gemini_call_id = debug_logger.log_gemini_prompt(
+                        call_type=call_type,
+                        prompt=post['content'],  # This will be updated in the actual analysis functions
+                        post_urls=[post['url']],
+                        context_info={"source_type": request.sourceType, "post_date": post['date']}
+                    )
+                    
                     # Analyze individual post with Gemini - use PDF analysis for PDF content
-                    if hasattr(request, 'contentType') and request.contentType == 'pdf':
-                        gemini_result = analyze_pdf_report_with_gemini(post['content'])
-                    else:
-                        gemini_result = analyze_individual_post_with_gemini(post['content'])
+                    try:
+                        if hasattr(request, 'contentType') and request.contentType == 'pdf':
+                            gemini_result = analyze_pdf_report_with_gemini(post['content'])
+                        else:
+                            gemini_result = analyze_individual_post_with_gemini(post['content'])
+                        
+                        # Log Gemini response
+                        debug_logger.log_gemini_response(
+                            call_id=gemini_call_id,
+                            response=gemini_result
+                        )
+                    except Exception as gemini_error:
+                        # Log Gemini error
+                        debug_logger.log_gemini_error(
+                            call_id=gemini_call_id,
+                            error=gemini_error,
+                            error_context={"post_url": post['url'], "content_length": len(post['content'])}
+                        )
+                        raise  # Re-raise to be caught by outer exception handler
                     
                     # Handle different response formats from Gemini
                     mentioned_stocks_data = []
@@ -1018,8 +1048,24 @@ async def crawl_endpoint(request: CrawlRequest):
                             
                             await db_service.save_post_with_analysis(post, source_id, enriched_stocks_data, post_summary)
                             print(f"✓ Post and analysis with structured data saved to database")
+                            
+                            # Log database operation
+                            debug_logger.log_database_operation(
+                                operation_type="save_post_with_analysis",
+                                table="posts",
+                                data={"post_url": post['url'], "stocks_count": len(enriched_stocks_data)},
+                                result="success"
+                            )
                         except Exception as db_error:
                             print(f"✗ Error saving to database: {db_error}")
+                            
+                            # Log database error
+                            debug_logger.log_database_operation(
+                                operation_type="save_post_with_analysis",
+                                table="posts",
+                                data={"post_url": post['url'], "stocks_count": len(enriched_stocks_data)},
+                                error=db_error
+                            )
                             # Continue processing even if database save fails
                     else:
                         print(f"DEBUG: No stocks found in analysis, skipping database save")
@@ -1167,11 +1213,35 @@ async def crawl_endpoint(request: CrawlRequest):
                 print(f"⚠️ Error updating company information: {company_error}")
                 # Continue with response even if company update fails
         
+        # Log analysis results
+        debug_logger.log_analysis_result(
+            operation_id=op_id,
+            analysis_type="stock_level_analysis",
+            stocks_found=stock_level_analysis,
+            summary={
+                "total_posts": len(processed_posts),
+                "unique_stocks": len(stock_level_analysis),
+                "source_type": request.sourceType
+            }
+        )
+        
+        # Finalize debug session
+        debug_logger.finalize_session()
+        
         return JSONResponse(content=response_data)
         
     except Exception as e:
+        # Log error in debug session
+        debug_logger.log_error(
+            error_type="crawl_endpoint_error",
+            error_message=str(e),
+            context={"source_name": request.sourceName, "url": request.url}
+        )
+        
+        # Finalize session even on error
+        debug_logger.finalize_session()
+        
         print(f"Error during crawling: {e}")
-        import traceback
         print(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Crawling failed: {str(e)}")
 

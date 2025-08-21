@@ -70,7 +70,7 @@ class HolisticAnalysisLogger:
         """Log a Gemini API call"""
         call_id = len(self.analysis_session["gemini_calls"]) + 1
         
-        # Log summary (no full prompt content to keep logs readable)
+        # Log summary with full prompt content for debugging
         if post_urls:
             self.logger.info(f"GEMINI CALL #{call_id} ({call_type}): Analyzing {len(post_urls)} posts")
             for url in post_urls[:3]:  # Log first 3 URLs
@@ -81,6 +81,12 @@ class HolisticAnalysisLogger:
             self.logger.info(f"GEMINI CALL #{call_id} ({call_type}): Context generation")
         
         self.logger.info(f"  - Prompt length: {len(prompt)} characters")
+        self.logger.info(f"  - Estimated tokens: {len(prompt.split()) * 1.3:.0f}")
+        
+        # Log full prompt content for debugging
+        self.logger.info(f"\n--- FULL PROMPT CONTENT (Call #{call_id}) ---")
+        self.logger.info(prompt)
+        self.logger.info(f"--- END PROMPT CONTENT (Call #{call_id}) ---\n")
         
         # Store detailed info in JSON
         call_data = {
@@ -90,6 +96,7 @@ class HolisticAnalysisLogger:
             "post_urls": post_urls or [],
             "prompt_length": len(prompt),
             "prompt_preview": prompt[:500] + "..." if len(prompt) > 500 else prompt,
+            "prompt_full": prompt,  # Store full prompt for complete debugging
             "estimated_tokens": len(prompt.split()) * 1.3  # Rough estimation
         }
         
@@ -109,6 +116,11 @@ class HolisticAnalysisLogger:
         response_str = str(response)
         self.logger.info(f"  - Response length: {len(response_str)} characters")
         
+        # Log full response content for debugging
+        self.logger.info(f"\n--- FULL RESPONSE CONTENT (Call #{call_id}) ---")
+        self.logger.info(response_str)
+        self.logger.info(f"--- END RESPONSE CONTENT (Call #{call_id}) ---\n")
+        
         # Update the call data with response info
         if self.analysis_session["gemini_calls"]:
             self.analysis_session["gemini_calls"][-1].update({
@@ -116,6 +128,7 @@ class HolisticAnalysisLogger:
                 "response_success": True,
                 "response_length": len(response_str),
                 "response_preview": response_str[:500] + "..." if len(response_str) > 500 else response_str,
+                "response_full": response_str,  # Store full response for complete debugging
                 "response_type": type(response).__name__
             })
     
