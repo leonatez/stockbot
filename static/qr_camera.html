@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Camera Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #video-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Remove the overlay div since we'll use the scanner box approach */
+
+        #scanner-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 3px solid #ff8c00;
+            border-radius: 12px;
+            background: transparent;
+            transition: all 0.3s ease;
+            z-index: 5;
+        }
+
+        .scanner-box-small {
+            width: 150px;
+            height: 150px;
+        }
+
+        .scanner-box-large {
+            width: 300px;
+            height: 300px;
+        }
+
+        #scanner-box {
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 10px #ff8c00;
+            }
+            to {
+                box-shadow: 0 0 30px #ff8c00, 0 0 40px #ff8c00;
+            }
+        }
+
+        /* Create the clear window effect using a different approach */
+        #scanner-box::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: transparent;
+            border-radius: 12px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+            z-index: -1;
+        }
+
+        .corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #ff8c00;
+        }
+
+        .corner.top-left {
+            top: -3px;
+            left: -3px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .corner.top-right {
+            top: -3px;
+            right: -3px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .corner.bottom-left {
+            bottom: -3px;
+            left: -3px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .corner.bottom-right {
+            bottom: -3px;
+            right: -3px;
+            border-left: none;
+            border-top: none;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 10;
+        }
+
+        button {
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border: 2px solid #ff8c00;
+            background: rgba(0, 0, 0, 0.8);
+            color: #ff8c00;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        button:hover {
+            background: rgba(255, 140, 0, 0.1);
+            box-shadow: 0 0 15px rgba(255, 140, 0, 0.5);
+        }
+
+        button.active {
+            background: rgba(255, 140, 0, 0.2);
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.7);
+        }
+
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0000;
+            font-size: 18px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #ff0000;
+            display: none;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ff8c00;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid #ff8c00;
+            z-index: 10;
+        }
+
+        @media (max-width: 600px) {
+            .scanner-box-small {
+                width: 120px;
+                height: 120px;
+            }
+
+            .scanner-box-large {
+                width: 250px;
+                height: 250px;
+            }
+
+            button {
+                padding: 12px 20px;
+                font-size: 14px;
+                min-width: 100px;
+            }
+
+            #instructions {
+                font-size: 14px;
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="video-container">
+        <video id="video" autoplay muted playsinline></video>
+        <div id="scanner-box" class="scanner-box-large">
+            <div class="corner top-left"></div>
+            <div class="corner top-right"></div>
+            <div class="corner bottom-left"></div>
+            <div class="corner bottom-right"></div>
+        </div>
+        <div id="instructions">
+            Position the QR code within the green box
+        </div>
+        <div id="controls">
+            <button id="small-box-btn">Small Box</button>
+            <button id="large-box-btn" class="active">Large Box</button>
+        </div>
+        <div id="error-message">
+            Camera access denied or not available. Please allow camera access and refresh the page.
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const scannerBox = document.getElementById('scanner-box');
+        const smallBoxBtn = document.getElementById('small-box-btn');
+        const largeBoxBtn = document.getElementById('large-box-btn');
+        const errorMessage = document.getElementById('error-message');
+
+        let currentBoxSize = 'large';
+
+        // Initialize camera
+        async function initCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: 'environment', // Use back camera if available
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    video.play();
+                };
+
+                console.log('Camera initialized successfully');
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                showError();
+            }
+        }
+
+        function showError() {
+            errorMessage.style.display = 'block';
+            document.getElementById('video-container').style.opacity = '0.5';
+        }
+
+        function setBoxSize(size) {
+            scannerBox.className = `scanner-box-${size}`;
+            currentBoxSize = size;
+            
+            // Update button states
+            smallBoxBtn.classList.toggle('active', size === 'small');
+            largeBoxBtn.classList.toggle('active', size === 'large');
+            
+            // Log for user behavior analysis
+            console.log(`Box size changed to: ${size} at ${new Date().toISOString()}`);
+            
+            // Send analytics event (you can implement this to track user behavior)
+            if (window.gtag) {
+                gtag('event', 'qr_box_size_change', {
+                    'box_size': size,
+                    'timestamp': Date.now()
+                });
+            }
+        }
+
+        // Event listeners
+        smallBoxBtn.addEventListener('click', () => setBoxSize('small'));
+        largeBoxBtn.addEventListener('click', () => setBoxSize('large'));
+
+        // Initialize camera when page loads
+        window.addEventListener('load', initCamera);
+
+        // Handle page visibility change to restart camera if needed
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !video.srcObject) {
+                initCamera();
+            }
+        });
+
+        // Log when user moves or adjusts their position (can be detected through device orientation)
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', (event) => {
+                // Log device orientation changes which might indicate user movement
+                console.log(`Device orientation: alpha=${event.alpha}, beta=${event.beta}, gamma=${event.gamma}`);
+            });
+        }
+
+        // Cleanup when leaving page
+        window.addEventListener('beforeunload', () => {
+            if (video.srcObject) {
+                const tracks = video.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>

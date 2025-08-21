@@ -127,21 +127,40 @@
 
                 <!-- Analysis Controls -->
                 <div id="crawlSection" class="hidden border-t border-gray-100 pt-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="text-lg font-semibold text-dark">
-                            <i class="fas fa-play-circle mr-2 text-primary"></i>Run Analysis
-                        </h4>
-                        <div class="flex items-center space-x-4">
-                            <label class="flex items-center space-x-2 text-sm">
-                                <input type="checkbox" id="debugMode" class="rounded border-gray-300 text-primary focus:ring-primary">
-                                <span class="text-gray-700">Debug Mode</span>
-                            </label>
+                    <div class="bg-gradient-to-r from-primary to-secondary p-6 rounded-xl text-white">
+                        <div class="text-center">
+                            <h4 class="text-xl font-bold mb-2">Ready to Analyze</h4>
+                            <p class="text-blue-100 mb-6">Start crawling and analyzing your configured sources</p>
+                            
+                            <div class="flex items-center justify-center space-x-6 mb-6">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-calendar-alt text-xl"></i>
+                                    <label for="crawlDays" class="font-medium">Analyze posts from last:</label>
+                                </div>
+                                <select id="crawlDays" class="bg-white text-dark border-0 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white">
+                                    <option value="1">1 day</option>
+                                    <option value="3" selected>3 days</option>
+                                    <option value="7">7 days</option>
+                                    <option value="14">14 days</option>
+                                    <option value="30">30 days</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex items-center space-x-4">
+                                <button id="crawlAllBtn" class="bg-white text-primary hover:bg-gray-100 px-8 py-4 rounded-lg transition-colors text-lg font-semibold shadow-lg">
+                                    <span id="crawlText">
+                                        <i class="fas fa-rocket mr-3"></i>Start Analysis
+                                    </span>
+                                    <i id="crawlLoadingIcon" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                                </button>
+                                
+                                <label class="flex items-center space-x-2 text-white">
+                                    <input type="checkbox" id="debugMode" class="rounded border-white text-primary focus:ring-white">
+                                    <span class="font-medium">Debug Mode</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
-                    <button id="crawlAllBtn" class="bg-gradient-to-r from-primary to-secondary hover:from-blue-600 hover:to-purple-600 text-white px-8 py-3 rounded-lg transition-all font-semibold shadow-lg hover:shadow-xl">
-                        <i id="crawlLoadingIcon" class="fas fa-search mr-2"></i>
-                        <span id="crawlText">Start Analysis</span>
-                    </button>
                 </div>
             </div>
 

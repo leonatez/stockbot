@@ -1445,21 +1445,329 @@ def analyze_individual_post_with_gemini(content: str) -> Dict:
 
 @app.post("/crawl-multiple")
 async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
-    """
-    Enhanced holistic crawl-multiple analysis
+    """Crawl posts from multiple URLs and return aggregated stock analysis"""
+    start_time = time.time()
     
-    New approach:
-    1. Collect all posts from all sources (existing or crawled)
-    2. Generate market context from industry + macro posts with ICB intelligence
-    3. Analyze company posts with full market context
-    4. Consolidate stock analysis with price context
-    """
-    
-    # Import the new holistic implementation
-    from holistic_crawl_multiple import holistic_crawl_multiple_endpoints
-    
-    # Call the new holistic implementation
-    return await holistic_crawl_multiple_endpoints(request, db_service)
+    try:
+        print(f"\n=== Received Multiple Sources Request ===")
+        print(f"Number of sources: {len(request.sources)}")
+        print(f"Crawl days: {request.days}")
+        if request.debug:
+            print(f"🐛 DEBUG MODE: Will crawl only 1 valid post from first source")
+        for i, source in enumerate(request.sources, 1):
+            print(f"Source {i}: {source.sourceName} ({source.sourceType}) - {source.url}")
+        
+        # Perform daily VN30 update at the start of multiple source analysis
+        print(f"\n=== Daily VN30 Update ===")
+        vn30_success = daily_vn30_update()
+        if vn30_success:
+            print("✓ VN30 update completed successfully")
+        else:
+            print("⚠️ VN30 update had issues, continuing with analysis...")
+        
+        # Initialize aggregated data structures
+        all_processed_posts = []
+        combined_stock_mentions = defaultdict(lambda: {
+            'post_details': [],
+            'sentiments': [],
+            'summaries': [],
+            'sources': set()  # Track which sources mention this stock
+        })
+        
+        successful_sources = 0
+        failed_sources = []
+        
+        # Process each source
+        for i, source_request in enumerate(request.sources, 1):
+            print(f"\n{'='*60}")
+            print(f"=== Processing Source {i}/{len(request.sources)}: {source_request.sourceName} ===")
+            print(f"{'='*60}")
+            
+            try:
+                # Get or create source in database
+                source_in_db = await db_service.get_source_by_url(source_request.url)
+                if not source_in_db:
+                    print(f"Source not found in database, creating new source: {source_request.sourceName}")
+                    source_id = await db_service.save_source(source_request.dict())
+                else:
+                    source_id = source_in_db['id']
+                    print(f"Using existing source from database: {source_in_db['name']}")
+                
+                # Crawl posts from this source
+                collected_posts, total_posts_found = await crawl_posts(source_request, days=request.days, debug=request.debug)
+                
+                print(f"Source {i} - Posts found: {total_posts_found}, Posts within {request.days} days: {len(collected_posts)}")
+                
+                # In debug mode, only process the first source
+                if request.debug and collected_posts:
+                    print(f"🐛 DEBUG MODE: Found posts from first source, skipping remaining sources")
+                
+                # Process each post from this source
+                for j, post in enumerate(collected_posts, 1):
+                    print(f"\n--- Processing Post {j}/{len(collected_posts)} from {source_request.sourceName} ---")
+                    print(f"URL: {post['url']}")
+                    print(f"Date: {post['date']}")
+                    print(f"Content preview: {post['content'][:200]}...")
+                    
+                    try:
+                        # Check if this post already has existing analysis data
+                        if 'existing_data' in post:
+                            print(f"✓ Using existing post analysis from database")
+                            post_object = post['existing_data']
+                            mentioned_stocks_data = [
+                                {
+                                    "stock_symbol": stock["stock_symbol"],
+                                    "sentiment": stock["sentiment"],
+                                    "summary": stock["stock_summary"]
+                                }
+                                for stock in post_object["mentionedStocks"]
+                            ]
+                        else:
+                            print(f"✓ Running fresh AI analysis for new post")
+                            # Analyze individual post with Gemini - use PDF analysis for PDF content
+                            if hasattr(source_request, 'contentType') and source_request.contentType == 'pdf':
+                                gemini_result = analyze_pdf_report_with_gemini(post['content'])
+                            else:
+                                gemini_result = analyze_individual_post_with_gemini(post['content'])
+                            
+                            # Handle different response formats from Gemini
+                            mentioned_stocks_data = []
+                            if isinstance(gemini_result, dict) and 'mentioned_stocks' in gemini_result:
+                                mentioned_stocks_data = gemini_result['mentioned_stocks']
+                            elif isinstance(gemini_result, list):
+                                mentioned_stocks_data = gemini_result
+                            
+                            print(f"DEBUG: Multi-source Gemini result type: {type(gemini_result)}")
+                            print(f"DEBUG: Multi-source Gemini result: {gemini_result}")
+                            print(f"DEBUG: Multi-source mentioned_stocks_data: {mentioned_stocks_data}")
+                            
+                            # Create post object with source information
+                            post_object = {
+                                "url": post['url'],
+                                "type": source_request.sourceType,
+                                "createdDate": post['date'],
+                                "content": post['content'],
+                                "summary": gemini_result.get('post_summary', '') if isinstance(gemini_result, dict) else '',
+                                "mentionedStocks": [],
+                                "source_name": source_request.sourceName,
+                                "source_type": source_request.sourceType
+                            }
+                            
+                            # Save new post and analysis to database
+                            if mentioned_stocks_data:
+                                print(f"DEBUG: Multi-source attempting to save post to database with {len(mentioned_stocks_data)} stocks")
+                                try:
+                                    post_summary = gemini_result.get('post_summary', '') if isinstance(gemini_result, dict) else ''
+                                    
+                                    # Add structured_analysis to each stock mention
+                                    structured_analysis = gemini_result.get('structured_analysis', {}) if isinstance(gemini_result, dict) else {}
+                                    enriched_stocks_data = []
+                                    for stock_data in mentioned_stocks_data:
+                                        if isinstance(stock_data, dict):
+                                            enriched_stock = stock_data.copy()
+                                            enriched_stock['structured_analysis'] = structured_analysis
+                                            enriched_stocks_data.append(enriched_stock)
+                                    
+                                    await db_service.save_post_with_analysis(post, source_id, enriched_stocks_data, post_summary)
+                                    print(f"✓ Post and analysis with structured data saved to database")
+                                except Exception as db_error:
+                                    print(f"✗ Error saving to database: {db_error}")
+                            else:
+                                print(f"DEBUG: Multi-source no stocks found in analysis, skipping database save")
+                            
+                            # Add stock mentions to post object
+                            for stock_data in mentioned_stocks_data:
+                                if isinstance(stock_data, dict):
+                                    stock_symbol = stock_data.get('stock_symbol', '')
+                                    sentiment = stock_data.get('sentiment', 'neutral')
+                                    stock_summary = stock_data.get('summary', '')
+                                    
+                                    if stock_symbol:
+                                        post_object["mentionedStocks"].append({
+                                            "stock_symbol": stock_symbol,
+                                            "sentiment": sentiment,
+                                            "stock_summary": stock_summary
+                                        })
+                        
+                        # Process each stock mentioned in this post
+                        for stock_data in mentioned_stocks_data:
+                            if isinstance(stock_data, dict):
+                                stock_symbol = stock_data.get('stock_symbol', '')
+                                sentiment = stock_data.get('sentiment', 'neutral')
+                                stock_summary = stock_data.get('summary', '') or stock_data.get('stock_summary', '')
+                                
+                                if stock_symbol:  # Only process if symbol is not empty
+                                    # Add to post's mentioned stocks
+                                    stock_info = {
+                                        "stock_symbol": stock_symbol,
+                                        "sentiment": sentiment,
+                                        "stock_summary": stock_summary
+                                    }
+                                    post_object["mentionedStocks"].append(stock_info)
+                                    
+                                    # Aggregate at stock level across all sources
+                                    combined_stock_mentions[stock_symbol]['post_details'].append({
+                                        'url': post['url'],
+                                        'date': post['date'],
+                                        'sentiment': sentiment,
+                                        'summary': stock_summary,
+                                        'post_summary': post_object['summary'],
+                                        'source_name': source_request.sourceName,
+                                        'source_type': source_request.sourceType
+                                    })
+                                    combined_stock_mentions[stock_symbol]['sentiments'].append(sentiment)
+                                    combined_stock_mentions[stock_symbol]['summaries'].append(stock_summary)
+                                    combined_stock_mentions[stock_symbol]['sources'].add(source_request.sourceName)
+                        
+                        all_processed_posts.append(post_object)
+                        
+                        print(f"✓ Post {j} processed - Found {len(post_object['mentionedStocks'])} stocks")
+                        for stock in post_object['mentionedStocks']:
+                            print(f"  - {stock['stock_symbol']}: {stock['sentiment']}")
+                        
+                    except Exception as e:
+                        print(f"✗ Error analyzing post {j} from {source_request.sourceName}: {e}")
+                        # Create post object without analysis
+                        post_object = {
+                            "url": post['url'],
+                            "type": source_request.sourceType,
+                            "createdDate": post['date'],
+                            "content": post['content'],
+                            "summary": "Analysis failed",
+                            "mentionedStocks": [],
+                            "source_name": source_request.sourceName,
+                            "source_type": source_request.sourceType
+                        }
+                        all_processed_posts.append(post_object)
+                        continue
+                
+                successful_sources += 1
+                print(f"✓ Source {i} ({source_request.sourceName}) completed successfully")
+                
+                # In debug mode, break after processing the first source with posts
+                if request.debug and collected_posts:
+                    print(f"🐛 DEBUG MODE: Processed first source with posts, stopping")
+                    break
+                
+            except Exception as e:
+                print(f"✗ Error processing source {i} ({source_request.sourceName}): {e}")
+                failed_sources.append({
+                    'source_name': source_request.sourceName,
+                    'error': str(e)
+                })
+                continue
+        
+        # Create aggregated stock analysis across all sources
+        aggregated_stock_analysis = []
+        for stock_symbol, data in combined_stock_mentions.items():
+            # Calculate overall sentiment (majority wins)
+            sentiment_counts = defaultdict(int)
+            for sentiment in data['sentiments']:
+                sentiment_counts[sentiment.lower()] += 1
+            
+            overall_sentiment = max(sentiment_counts.items(), key=lambda x: x[1])[0] if sentiment_counts else 'neutral'
+            
+            # Combine all summaries about this stock
+            combined_summary = '. '.join(filter(None, data['summaries']))
+            if len(combined_summary) > 500:  # Truncate if too long
+                combined_summary = combined_summary[:500] + "..."
+            
+            # Create aggregated stock analysis object
+            stock_analysis = {
+                "stock_symbol": stock_symbol,
+                "mentioned_count": len(data['post_details']),  # Total posts mentioning this stock
+                "overall_sentiment": overall_sentiment,
+                "stock_summary": combined_summary,
+                "post_details": data['post_details'],  # All posts from all sources
+                "sources_count": len(data['sources']),  # How many different sources mention this stock
+                "sources": list(data['sources'])  # Which sources mention this stock
+            }
+            aggregated_stock_analysis.append(stock_analysis)
+        
+        # Sort by mention count (most mentioned first)
+        aggregated_stock_analysis.sort(key=lambda x: x['mentioned_count'], reverse=True)
+        
+        # Calculate execution time
+        end_time = time.time()
+        execution_duration = f"{end_time - start_time:.2f}s"
+        
+        print(f"\n{'='*60}")
+        print(f"=== MULTI-SOURCE ANALYSIS SUMMARY ===")
+        print(f"{'='*60}")
+        print(f"Sources processed: {successful_sources}/{len(request.sources)}")
+        print(f"Total posts analyzed: {len(all_processed_posts)}")
+        print(f"Unique stocks found: {len(aggregated_stock_analysis)}")
+        print(f"Execution time: {execution_duration}")
+        
+        if failed_sources:
+            print(f"\nFailed sources:")
+            for failed in failed_sources:
+                print(f"  - {failed['source_name']}: {failed['error']}")
+        
+        print(f"\nTop stocks by mention count:")
+        for stock in aggregated_stock_analysis[:5]:  # Show top 5
+            print(f"  - {stock['stock_symbol']}: {stock['mentioned_count']} mentions from {stock['sources_count']} sources")
+            print(f"    Overall sentiment: {stock['overall_sentiment']}")
+            print(f"    Sources: {', '.join(stock['sources'])}")
+        
+        # Create comprehensive JSON response
+        response_data = {
+            "posts": all_processed_posts,
+            "stock_analysis": aggregated_stock_analysis,
+            "metadata": {
+                "sources_requested": len(request.sources),
+                "sources_analyzed": successful_sources,
+                "sources_failed": len(failed_sources),
+                "failed_sources": failed_sources,
+                "total_posts_analyzed": len(all_processed_posts),
+                "unique_stocks_found": len(aggregated_stock_analysis),
+                "analysis_duration": execution_duration,
+                "success_rate": f"{(successful_sources/len(request.sources)*100):.1f}%" if request.sources else "0%",
+                "crawl_timestamp": datetime.now().isoformat(),
+                "source_breakdown": [
+                    {
+                        "source_name": source.sourceName,
+                        "source_type": source.sourceType,
+                        "posts_count": len([p for p in all_processed_posts if p.get('source_name') == source.sourceName])
+                    }
+                    for source in request.sources
+                ]
+            }
+        }
+        
+        print(f"\n=== Final Response Summary ===")
+        print(f"Posts processed: {len(all_processed_posts)}")
+        print(f"Unique stocks found: {len(aggregated_stock_analysis)}")
+        print(f"Response structure: {list(response_data.keys())}")
+        
+        # Update stock prices for mentioned stocks
+        if aggregated_stock_analysis:
+            print(f"\n=== Updating Stock Prices ===")
+            try:
+                price_update_results = update_mentioned_stocks_prices(aggregated_stock_analysis)
+                print(f"✓ Price update completed for {len(price_update_results)} stocks")
+            except Exception as price_error:
+                print(f"⚠️ Error updating stock prices: {price_error}")
+                # Continue with response even if price update fails
+            
+            # Update company information for mentioned stocks
+            print(f"\n=== Updating Company Information ===")
+            try:
+                mentioned_symbols = [stock["stock_symbol"] for stock in aggregated_stock_analysis]
+                company_update_results = await update_company_information(mentioned_symbols)
+                successful_updates = sum(1 for success in company_update_results.values() if success)
+                print(f"✓ Company info update completed for {successful_updates}/{len(mentioned_symbols)} stocks")
+            except Exception as company_error:
+                print(f"⚠️ Error updating company information: {company_error}")
+                # Continue with response even if company update fails
+        
+        return JSONResponse(content=response_data)
+        
+    except Exception as e:
+        print(f"Critical error during multiple source crawling: {e}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Multiple source crawling failed: {str(e)}")
 
 
 # ===== SOURCE MANAGEMENT ENDPOINTS =====
@@ -3084,12 +3392,6 @@ class MathAnswerResponse(BaseModel):
     total: int
     percentage: float
     message: str
-
-@app.get("/testqr", response_class=HTMLResponse)
-async def test_qr_camera():
-    """QR camera test endpoint with adjustable square box"""
-    with open("static/qr_camera.html", "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
 
 @app.get("/math", response_class=HTMLResponse)
 async def math_game():

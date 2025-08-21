@@ -3,9 +3,10 @@ FROM python:3.11-slim
 # Install system dependencies for Chrome and Selenium
 RUN apt-get update && apt-get install -y \
     wget \
-    gnupg \
+    gnupg2 \
     unzip \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Chrome
