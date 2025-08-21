@@ -49,10 +49,7 @@ class DatabaseService:
             
             print(f"Saving source to database: {db_source['name']} - {db_source['url']} ({db_source['source_type']}) - content_type: {db_source['content_type']}")
             
-            # Temporarily remove content_type from insert until column is added to database
-            db_source_for_insert = {k: v for k, v in db_source.items() if k != 'content_type'}
-            
-            result = self.supabase.table("sources").insert(db_source_for_insert).execute()
+            result = self.supabase.table("sources").insert(db_source).execute()
             
             if result.data:
                 print(f"✓ Source '{source_data.get('sourceName')}' saved to database with ID: {db_source['id']}")
@@ -123,11 +120,8 @@ class DatabaseService:
             
             print(f"Updating source {source_id}: {db_update['name']} - {db_update['url']} - content_type: {db_update['content_type']}")
             
-            # Temporarily remove content_type from update until column is added to database
-            db_update_for_db = {k: v for k, v in db_update.items() if k != 'content_type'}
-            
             # Update the source
-            result = self.supabase.table("sources").update(db_update_for_db).eq("id", source_id).execute()
+            result = self.supabase.table("sources").update(db_update).eq("id", source_id).execute()
             
             if result.data:
                 print(f"✓ Source '{source_data.get('sourceName')}' (ID: {source_id}) updated successfully")
