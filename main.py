@@ -15,7 +15,7 @@ from typing import List, Optional, Dict
 from collections import defaultdict
 from urllib.parse import urljoin, urlparse
 from pathlib import Path
-import undetected_chromedriver as uc
+# Removed undetected_chromedriver, using regular Selenium via chrome_driver_fix
 import re
 import time
 import random
@@ -63,163 +63,10 @@ driver_pool = queue.Queue()
 driver_lock = threading.Lock()
 MAX_DRIVERS = 3
 
-# Chrome version configuration - change this single value if version mismatch occurs
-CHROME_VERSION = 139
+# Chrome version configuration moved to chrome_driver_fix module
 
-def create_stealth_driver():
-    """Create a new undetected Chrome driver with stealth settings optimized for servers"""
-    try:
-        options = uc.ChromeOptions()
-        
-        # Essential headless and server-friendly options
-        options.add_argument('--headless')  # Run in headless mode
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--disable-extensions')
-        options.add_argument('--disable-plugins')
-        options.add_argument('--disable-images')
-        options.add_argument('--disable-logging')
-        options.add_argument('--disable-log-level')
-        options.add_argument('--log-level=3')
-        options.add_argument('--silent')
-        
-        # Memory and performance optimization for weak servers
-        options.add_argument('--max_old_space_size=4096')
-        options.add_argument('--disable-background-timer-throttling')
-        options.add_argument('--disable-backgrounding-occluded-windows')
-        options.add_argument('--disable-renderer-backgrounding')
-        options.add_argument('--disable-features=TranslateUI')
-        options.add_argument('--disable-ipc-flooding-protection')
-        
-        # Basic stealth options (compatible with most Chrome versions)
-        options.add_argument('--no-first-run')
-        options.add_argument('--disable-default-apps')
-        options.add_argument('--disable-popup-blocking')
-        options.add_argument('--disable-translate')
-        options.add_argument('--disable-sync')
-        options.add_argument('--disable-crash-reporter')
-        options.add_argument('--disable-web-security')
-        options.add_argument('--allow-running-insecure-content')
-        options.add_argument('--disable-features=VizDisplayCompositor')
-        
-        # Window size (still needed even in headless)
-        window_sizes = ['1920,1080', '1366,768', '1440,900', '1536,864', '1280,720']
-        selected_size = random.choice(window_sizes)
-        options.add_argument(f'--window-size={selected_size}')
-        
-        # Random user agent
-        user_agents = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-        ]
-        selected_ua = random.choice(user_agents)
-        options.add_argument(f'--user-agent={selected_ua}')
-        
-        # Prefs for stealth (compatible settings)
-        prefs = {
-            "profile.default_content_setting_values": {
-                "notifications": 2,
-                "media_stream": 2,
-                "geolocation": 2,
-                "microphone": 2,
-                "camera": 2
-            },
-            "profile.default_content_settings.popups": 0,
-            "profile.managed_default_content_settings.images": 2,
-            "profile.password_manager_enabled": False,
-            "credentials_enable_service": False,
-        }
-        options.add_experimental_option("prefs", prefs)
-        
-        # Only add advanced stealth options if they're supported
-        try:
-            # Test if these options are supported
-            options.add_experimental_option('excludeSwitches', ['load-extension', 'enable-automation'])
-            options.add_experimental_option('useAutomationExtension', False)
-            print("Advanced stealth options added successfully")
-        except Exception as e:
-            print(f"Advanced stealth options not supported: {e}")
-            # Remove the problematic options and continue
-            pass
-        
-        print("Creating undetected Chrome driver (headless mode)...")
-        
-        # Try to create driver with correct Chrome version
-        try:
-            driver = uc.Chrome(options=options, version_main=CHROME_VERSION)
-            print(f"Chrome driver created successfully with version {CHROME_VERSION}!")
-        except Exception as e:
-            print(f"Version {CHROME_VERSION} failed: {e}")
-            # Try with automatic version detection as fallback
-            driver = uc.Chrome(options=options, version_main=None, driver_executable_path=None, use_subprocess=True)
-            print("Chrome driver created with subprocess method!")
-        
-        # Additional stealth measures (with better error handling)
-        try:
-            # Remove webdriver property
-            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            print("Removed webdriver property")
-        except Exception as e:
-            print(f"Could not remove webdriver property: {e}")
-        
-        try:
-            # Override user agent via CDP if supported
-            driver.execute_cdp_cmd('Network.setUserAgentOverride', {
-                "userAgent": selected_ua,
-                "acceptLanguage": "en-US,en;q=0.9",
-                "platform": "Linux x86_64"  # More appropriate for server
-            })
-            print("User agent overridden via CDP")
-        except Exception as e:
-            print(f"Could not override user agent via CDP: {e}")
-        
-        try:
-            # Additional stealth scripts
-            driver.execute_script("Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]})")
-            driver.execute_script("Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']})")
-            print("Additional stealth properties set")
-        except Exception as e:
-            print(f"Could not set additional stealth properties: {e}")
-        
-        print("Chrome driver setup completed successfully!")
-        return driver
-        
-    except Exception as e:
-        print(f"Failed to create Chrome driver with advanced options: {e}")
-        print("Trying with minimal headless options...")
-        
-        # Fallback: try with absolutely minimal options for weak servers
-        try:
-            options = uc.ChromeOptions()
-            # Absolutely essential options only
-            options.add_argument('--headless')
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
-            options.add_argument('--disable-logging')
-            options.add_argument('--log-level=3')
-            options.add_argument('--silent')
-            options.add_argument('--window-size=1920,1080')
-            
-            # Simple prefs
-            prefs = {"profile.managed_default_content_settings.images": 2}
-            options.add_experimental_option("prefs", prefs)
-            
-            driver = uc.Chrome(options=options, version_main=CHROME_VERSION)
-            print(f"Chrome driver created with minimal headless options and version {CHROME_VERSION}!")
-            return driver
-            
-        except Exception as e2:
-            print(f"Even minimal Chrome driver failed: {e2}")
-            print("This might be due to:")
-            print("1. Chrome/ChromeDriver version mismatch")
-            print("2. Missing Chrome installation")
-            print("3. Insufficient server permissions")
-            print("4. Missing dependencies (try: apt-get install -y chromium-browser)")
-            return None
+# Legacy function removed - now using chrome_driver_fix module
+# This function is replaced by get_chrome_driver() from chrome_driver_fix
 
 def get_driver():
     """Get a driver using robust Chrome driver manager"""
@@ -427,13 +274,29 @@ def human_like_delay():
     time.sleep(delay)
 
 def get_page_content_with_selenium(url: str, retries: int = 3) -> Optional[html.HtmlElement]:
-    """Get page content using Selenium with stealth driver, fallback to requests"""
+    """Get page content using Selenium first, fallback to requests"""
     driver = None
     
-    for attempt in range(retries):
+    # Sites known to have issues with Selenium - use requests first for these
+    # Note: abs.vn removed from list since Selenium now works properly with our fixed chrome driver
+    problematic_domains = ['cafef.vn', 'vietstock.vn']
+    domain = urlparse(url).netloc.lower()
+    
+    if any(prob_domain in domain for prob_domain in problematic_domains):
+        print(f"⚡ Using requests-first for problematic domain: {domain}")
+        requests_result = get_page_content_fallback(url)
+        if requests_result is not None:
+            print(f"✅ Successfully fetched {url} with requests")
+            return requests_result
+        print(f"❌ Requests failed for {url}, trying Selenium as last resort...")
+    else:
+        print(f"🔍 Trying Selenium-first approach for: {url}")
+    
+    # Try Selenium first (your preference) but with limited retries for speed
+    for attempt in range(2):  # Only 2 attempts for faster fallback
         try:
             if attempt > 0:
-                wait_time = random.uniform(15, 30)
+                wait_time = random.uniform(1, 3)  # Much shorter wait for faster fallback
                 print(f"Waiting {wait_time:.1f} seconds before retry {attempt + 1}...")
                 time.sleep(wait_time)
             
@@ -441,14 +304,45 @@ def get_page_content_with_selenium(url: str, retries: int = 3) -> Optional[html.
             
             driver = get_driver()
             if not driver:
-                print("Failed to get Chrome driver, trying fallback...")
-                return get_page_content_fallback(url)
+                print("Failed to get Chrome driver, trying next attempt...")
+                continue
                 
-            # Set page load timeout
-            driver.set_page_load_timeout(30)
+            # Set very aggressive timeouts for faster failure on difficult sites
+            driver.set_page_load_timeout(10)  # Much shorter timeout
+            driver.implicitly_wait(2)
             
-            # Navigate to page
-            driver.get(url)
+            # Navigate to page with improved error handling and timeout
+            try:
+                print(f"Navigating to {url}...")
+                
+                # Use threading for enforced timeout
+                def navigate_with_timeout():
+                    driver.get(url)
+                
+                import threading
+                nav_thread = threading.Thread(target=navigate_with_timeout)
+                nav_thread.daemon = True
+                nav_thread.start()
+                nav_thread.join(timeout=15)  # 15 second hard timeout
+                
+                if nav_thread.is_alive():
+                    print(f"⏰ Navigation timeout for {url}, killing driver...")
+                    try:
+                        driver.quit()
+                    except:
+                        pass
+                    driver = None
+                    continue
+                
+                print(f"✅ Successfully navigated to {url}")
+            except Exception as nav_error:
+                print(f"❌ Navigation failed for {url}: {nav_error}")
+                try:
+                    driver.quit()
+                except:
+                    pass
+                driver = None
+                continue
             
             # Human-like behavior: scroll a bit
             try:
@@ -456,13 +350,16 @@ def get_page_content_with_selenium(url: str, retries: int = 3) -> Optional[html.
             except:
                 pass
             
-            # Wait for page to load
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
-            )
+            # Quick wait for page to load
+            try:
+                WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "body"))
+                )
+            except TimeoutException:
+                print(f"Body element not found quickly for {url}, but continuing...")
             
-            # Add random delay to mimic reading
-            time.sleep(random.uniform(1, 3))
+            # Quick delay to mimic reading
+            time.sleep(random.uniform(0.5, 1.5))
             
             # Get page source and convert to lxml tree
             page_source = driver.page_source
@@ -487,6 +384,7 @@ def get_page_content_with_selenium(url: str, retries: int = 3) -> Optional[html.
                 except:
                     pass
     
+    # If Selenium fails, fall back to requests
     print(f"Selenium failed for {url}, trying fallback method...")
     return get_page_content_fallback(url)
 
@@ -1517,20 +1415,110 @@ def analyze_individual_post_with_gemini(content: str) -> Dict:
 @app.post("/crawl-multiple")
 async def crawl_multiple_endpoints(request: MultipleCrawlRequest):
     """
-    Enhanced holistic crawl-multiple analysis
+    AI Agent Team Analysis - Renovated Backend Flow
     
-    New approach:
-    1. Collect all posts from all sources (existing or crawled)
-    2. Generate market context from industry + macro posts with ICB intelligence
-    3. Analyze company posts with full market context
-    4. Consolidate stock analysis with price context
+    New architecture:
+    1. Senior Consultant Agent orchestrates specialized agents
+    2. Company Analyst Agent analyzes stock mentions
+    3. Industry Analyst Agent analyzes sector trends  
+    4. Macro Analyst Agent analyzes economic factors
+    5. Senior Consultant synthesizes holistic market view
+    6. Database operations handled exclusively by Senior Consultant
     """
     
-    # Import the new holistic implementation
-    from holistic_crawl_multiple import holistic_crawl_multiple_endpoints
+    # Import the new AI Agent orchestrator
+    from agents.agent_orchestrator import agent_orchestrated_analysis
     
-    # Call the new holistic implementation
-    return await holistic_crawl_multiple_endpoints(request, db_service)
+    # Hand over control to AI Agent team
+    return await agent_orchestrated_analysis(request, db_service)
+
+
+# ===== AGENT SYSTEM TEST ENDPOINT =====
+
+@app.get("/test-agents")
+async def test_agents():
+    """Test endpoint to verify AI agent system is working"""
+    try:
+        from agents.senior_consultant_agent import SeniorConsultantAgent
+        from agents.company_analyst_agent import CompanyAnalystAgent
+        from agents.industry_analyst_agent import IndustryAnalystAgent
+        from agents.macro_analyst_agent import MacroAnalystAgent
+        
+        # Test agent initialization
+        company_agent = CompanyAnalystAgent()
+        industry_agent = IndustryAnalystAgent()
+        macro_agent = MacroAnalystAgent()
+        senior_agent = SeniorConsultantAgent(db_service)
+        
+        return {
+            "status": "success",
+            "message": "All AI agents initialized successfully",
+            "agents": {
+                "company_analyst": "✅ Ready",
+                "industry_analyst": "✅ Ready", 
+                "macro_analyst": "✅ Ready",
+                "senior_consultant": "✅ Ready"
+            },
+            "supported_stocks": len(company_agent.get_supported_stocks()),
+            "supported_industries": len(industry_agent.get_supported_industries()),
+            "supported_macro_themes": len(macro_agent.get_supported_themes())
+        }
+        
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "message": f"Agent system error: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
+
+
+@app.post("/test-agent-analysis")
+async def test_agent_analysis():
+    """Test endpoint to verify AI agent analysis without web crawling"""
+    try:
+        from agents.senior_consultant_agent import SeniorConsultantAgent
+        
+        # Create mock request data
+        mock_request_data = {
+            'sources': [{'sourceName': 'Test', 'sourceType': 'company'}],
+            'posts_collected': {
+                'test_source': [
+                    {
+                        'id': 1,
+                        'title': 'HPG báo cáo lợi nhuận tăng mạnh',
+                        'content': 'Công ty Cổ phần Tập đoàn Hoa Phát (HPG) vừa công bố kết quả kinh doanh quý III với lợi nhuận tăng 25% so với cùng kỳ.',
+                        'url': 'https://test.com/hpg-profit',
+                        'created_at': '2025-08-26',
+                        'source_id': 'test'
+                    }
+                ]
+            }
+        }
+        
+        # Initialize Senior Consultant
+        senior_consultant = SeniorConsultantAgent(db_service)
+        
+        # Run analysis
+        result = await senior_consultant.orchestrate_analysis(
+            request_data=mock_request_data,
+            days=1,
+            debug=True
+        )
+        
+        return {
+            "status": "success",
+            "message": "AI Agent analysis test completed",
+            "result": result
+        }
+        
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "message": f"Agent analysis test error: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
 
 
 # ===== SOURCE MANAGEMENT ENDPOINTS =====

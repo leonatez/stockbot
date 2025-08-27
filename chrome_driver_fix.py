@@ -1,10 +1,11 @@
 """
 Robust Chrome Driver Management System
-Fixes version mismatch, options reuse, and implements proper driver lifecycle
+Uses regular Selenium with anti-detection measures (works better than undetected-chromedriver)
 """
 
-import undetected_chromedriver as uc
+from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 import subprocess
 import re
 import os
@@ -33,13 +34,14 @@ class ChromeDriverManager:
     def detect_chrome_version(self) -> Optional[str]:
         """Detect installed Chrome version"""
         try:
-            # Try different Chrome binary locations
+            # Try different Chrome binary locations (prioritize Chromium which works)
             chrome_paths = [
+                "/usr/bin/chromium-browser",  # This one works from our test
+                "/usr/bin/chromium",
                 "/usr/bin/google-chrome",
                 "/usr/bin/google-chrome-stable", 
-                "/usr/bin/chromium-browser",
-                "/usr/bin/chromium",
                 "/opt/google/chrome/chrome",
+                "/opt/google/chrome/google-chrome",
                 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
             ]
             
@@ -68,24 +70,14 @@ class ChromeDriverManager:
             logger.error(f"Error detecting Chrome version: {e}")
             return None
     
-    def install_compatible_chromedriver(self, chrome_version: str) -> bool:
-        """Install compatible ChromeDriver version"""
+    def get_chromedriver_service(self) -> Optional[Service]:
+        """Get ChromeDriver service (let webdriver-manager handle the installation)"""
         try:
-            logger.info(f"Installing ChromeDriver for Chrome {chrome_version}...")
-            
-            # Force install specific version
-            driver = uc.Chrome(version_main=int(chrome_version), 
-                              driver_executable_path=None,
-                              browser_executable_path=self.chrome_binary_path,
-                              use_subprocess=True)
-            driver.quit()
-            
-            logger.info(f"✓ ChromeDriver for version {chrome_version} installed successfully")
-            return True
-            
+            # Let Selenium handle ChromeDriver automatically
+            return None  # Use default service
         except Exception as e:
-            logger.error(f"Failed to install ChromeDriver for version {chrome_version}: {e}")
-            return False
+            logger.error(f"Failed to create ChromeDriver service: {e}")
+            return None
     
     def create_fresh_options(self) -> Options:
         """Create fresh Chrome options object to avoid reuse errors"""
@@ -105,7 +97,11 @@ class ChromeDriverManager:
         options.add_argument('--disable-extensions')
         options.add_argument('--disable-plugins')
         options.add_argument('--disable-images')
-        options.add_argument('--disable-javascript')
+        
+        # Anti-detection measures (from our successful test)
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
         
         # Memory optimization
         options.add_argument('--memory-pressure-off')
@@ -114,141 +110,96 @@ class ChromeDriverManager:
         # Window size
         options.add_argument('--window-size=1920,1080')
         
-        # User agent
-        options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36')
+        # User agent (match what worked in our test)
+        options.add_argument('--user-agent=Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36')
         
         # Disable logging
         options.add_argument('--disable-logging')
         options.add_argument('--log-level=3')
         options.add_argument('--silent')
         
-        # Avoid problematic options that cause "excludeSwitches" errors
-        # DO NOT ADD: excludeSwitches, useAutomationExtension
-        
         return options
     
-    def create_driver_safe(self) -> Optional[uc.Chrome]:
-        """Safely create Chrome driver with proper error handling"""
+    def create_driver_safe(self) -> Optional[webdriver.Chrome]:
+        """Safely create Chrome driver with proper error handling using regular Selenium"""
         with self.lock:
             try:
-                # Detect Chrome version if not already done
-                if not self.chrome_version:
+                # Detect Chrome binary if not already done
+                if not self.chrome_binary_path:
                     self.chrome_version = self.detect_chrome_version()
-                    if not self.chrome_version:
-                        logger.error("Could not detect Chrome version")
+                    if not self.chrome_binary_path:
+                        logger.error("Could not detect Chrome binary")
                         return None
                 
-                # Create fresh options to avoid reuse error
-                options = self.create_fresh_options()
-                
-                # Method 1: Try with detected version
+                # Method 1: Try with Chromium browser (we know this works)
                 try:
-                    logger.info(f"Creating driver with Chrome version {self.chrome_version}")
-                    driver = uc.Chrome(
-                        options=options,
-                        version_main=int(self.chrome_version),
-                        browser_executable_path=self.chrome_binary_path,
-                        use_subprocess=True,
-                        suppress_welcome=True
-                    )
+                    logger.info(f"Creating driver with Chromium at {self.chrome_binary_path}")
+                    options = self.create_fresh_options()
+                    options.binary_location = self.chrome_binary_path
                     
-                    # Test the driver
+                    driver = webdriver.Chrome(options=options)
+                    
+                    # Test the driver and apply anti-detection measures
                     driver.set_page_load_timeout(30)
                     driver.get("data:text/html,<html><body>Test</body></html>")
                     
-                    logger.info(f"✓ Chrome driver created successfully with version {self.chrome_version}")
+                    # Apply anti-detection script
+                    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                    
+                    logger.info(f"✓ Chrome driver created successfully with {self.chrome_binary_path}")
                     return driver
                     
                 except Exception as e:
-                    logger.warning(f"Failed with version {self.chrome_version}: {e}")
+                    logger.warning(f"Failed with {self.chrome_binary_path}: {e}")
                     
-                    # Method 2: Try with automatic version detection
+                    # Method 2: Try with minimal options
                     try:
-                        logger.info("Trying automatic version detection...")
-                        options = self.create_fresh_options()  # Fresh options
-                        driver = uc.Chrome(
-                            options=options,
-                            version_main=None,  # Auto-detect
-                            browser_executable_path=self.chrome_binary_path,
-                            use_subprocess=True,
-                            suppress_welcome=True
-                        )
+                        logger.info("Trying minimal configuration...")
+                        options = Options()
+                        options.add_argument('--headless=new')
+                        options.add_argument('--no-sandbox')
+                        options.add_argument('--disable-dev-shm-usage')
+                        options.add_argument('--disable-blink-features=AutomationControlled')
+                        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                        options.add_experimental_option('useAutomationExtension', False)
+                        options.binary_location = self.chrome_binary_path
+                        
+                        driver = webdriver.Chrome(options=options)
                         
                         driver.set_page_load_timeout(30)
                         driver.get("data:text/html,<html><body>Test</body></html>")
                         
-                        logger.info("✓ Chrome driver created with auto-detection")
+                        # Apply anti-detection measures
+                        try:
+                            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                        except:
+                            pass
+                        
+                        logger.info("✓ Chrome driver created with minimal configuration")
                         return driver
                         
                     except Exception as e2:
-                        logger.warning(f"Auto-detection failed: {e2}")
-                        
-                        # Method 3: Minimal fallback
-                        try:
-                            logger.info("Trying minimal fallback configuration...")
-                            options = Options()
-                            options.add_argument('--headless=new')
-                            options.add_argument('--no-sandbox')
-                            options.add_argument('--disable-dev-shm-usage')
-                            
-                            driver = uc.Chrome(
-                                options=options,
-                                use_subprocess=True,
-                                suppress_welcome=True
-                            )
-                            
-                            driver.set_page_load_timeout(30)
-                            driver.get("data:text/html,<html><body>Test</body></html>")
-                            
-                            logger.info("✓ Chrome driver created with minimal fallback")
-                            return driver
-                            
-                        except Exception as e3:
-                            logger.error(f"All Chrome driver creation methods failed:")
-                            logger.error(f"  Method 1 (version {self.chrome_version}): {e}")
-                            logger.error(f"  Method 2 (auto-detect): {e2}")
-                            logger.error(f"  Method 3 (minimal): {e3}")
-                            return None
+                        logger.error(f"All Chrome driver creation methods failed:")
+                        logger.error(f"  Method 1 (full options): {e}")
+                        logger.error(f"  Method 2 (minimal): {e2}")
+                        return None
             
             except Exception as e:
                 logger.error(f"Unexpected error in create_driver_safe: {e}")
                 return None
     
-    def get_driver(self) -> Optional[uc.Chrome]:
-        """Get a driver from pool or create new one"""
-        with self.lock:
-            # Try to reuse existing driver
-            while self.driver_pool:
-                driver = self.driver_pool.pop()
-                try:
-                    # Test if driver is still alive
-                    driver.current_url
-                    return driver
-                except:
-                    # Driver is dead, try to quit it
-                    try:
-                        driver.quit()
-                    except:
-                        pass
-            
-            # Create new driver
-            return self.create_driver_safe()
+    def get_driver(self) -> Optional[webdriver.Chrome]:
+        """Get a driver - simplified without pool to avoid threading issues"""
+        # Skip pool management for now to avoid hangs
+        # Always create fresh driver
+        return self.create_driver_safe()
     
-    def return_driver(self, driver: uc.Chrome):
-        """Return driver to pool"""
-        if driver and len(self.driver_pool) < self.max_drivers:
-            try:
-                # Test if driver is still alive
-                driver.current_url
-                with self.lock:
-                    self.driver_pool.append(driver)
-                    return
-            except:
-                pass
-        
-        # Driver is dead or pool is full, quit it
+    def return_driver(self, driver: webdriver.Chrome):
+        """Return driver - simplified to just quit it"""
+        # Skip pool management, just quit the driver to avoid threading issues
         try:
-            driver.quit()
+            if driver:
+                driver.quit()
         except:
             pass
     
@@ -265,11 +216,11 @@ class ChromeDriverManager:
 # Global instance
 chrome_manager = ChromeDriverManager()
 
-def get_chrome_driver() -> Optional[uc.Chrome]:
+def get_chrome_driver() -> Optional[webdriver.Chrome]:
     """Get Chrome driver instance"""
     return chrome_manager.get_driver()
 
-def return_chrome_driver(driver: uc.Chrome):
+def return_chrome_driver(driver: webdriver.Chrome):
     """Return Chrome driver to pool"""
     chrome_manager.return_driver(driver)
 
